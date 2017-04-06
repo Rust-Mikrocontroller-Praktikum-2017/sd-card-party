@@ -1,5 +1,7 @@
 #![no_std]
 #![no_main]
+#![feature(plugin)]
+#![plugin(clippy)]
 
 extern crate stm32f7_discovery as stm32f7;
 
