@@ -1,7 +1,7 @@
 [package]
 name = "sd-card-party"
 version = "0.1.0"
-authors = ["Christoffer Anselm <c.anselm@paindevs.com>"]
+authors = ["Christoffer Anselm <c.anselm@paindevs.com>", "Clara Scherer <git20357@s.cherer.de>"]
 
 [dependencies]
 cortex-m = "0.1.4"
