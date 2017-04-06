@@ -1,2 +1,6 @@
 target/
 **/*.rs.bk
+rls.toml
+rls.sh
+.vscode/
+Cargo.lock
