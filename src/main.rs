@@ -32,6 +32,9 @@ pub unsafe extern "C" fn reset() -> ! {
     // zeroes the .bss section
     r0::zero_bss(bss_start, bss_end);
 
+    // initialize the heap; needed for text support
+    stm32f7::heap::init();
+
     // initialize the FPU, so the CPU won't hang when using f32/f64 types
     let scb = stm32f7::cortex_m::peripheral::scb_mut();
     scb.cpacr.modify(|v| v | 0b1111 << 20);
@@ -112,6 +115,8 @@ fn main(hw: board::Hardware) -> ! {
     lcd.clear_screen();
 
     // TODO(ca) maybe draw some nice loading screen or something...
+    let mut tw = lcd.text_writer().unwrap();
+    tw.print_str("Welcome to the SD Card Party!");
 
     // TODO(ca) add further initialization code here
 
