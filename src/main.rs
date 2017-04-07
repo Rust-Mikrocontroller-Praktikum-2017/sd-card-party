@@ -4,11 +4,13 @@
 #![plugin(clippy)]
 
 extern crate stm32f7_discovery as stm32f7;
-
+extern crate volatile;
 extern crate r0;
 
 use stm32f7::{system_clock, sdram, lcd, board, embedded};
 use embedded::interfaces::gpio::{self, Gpio};
+
+mod dma;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {
@@ -49,6 +51,7 @@ fn main(hw: board::Hardware) -> ! {
         flash,
         fmc,
         ltdc,
+        dma_2,
         gpio_a,
         gpio_b,
         gpio_c,
@@ -117,6 +120,8 @@ fn main(hw: board::Hardware) -> ! {
     // TODO(ca) maybe draw some nice loading screen or something...
     let mut tw = lcd.text_writer().unwrap();
     tw.print_str("Welcome to the SD Card Party!");
+
+    dma::DmaManager::init(dma_2);
 
     // TODO(ca) add further initialization code here
 

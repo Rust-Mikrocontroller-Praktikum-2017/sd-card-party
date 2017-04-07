@@ -6,6 +6,7 @@ authors = ["Christoffer Anselm <c.anselm@paindevs.com>", "Clara Scherer <git2035
 [dependencies]
 cortex-m = "0.1.4"
 r0 = "0.1.0"
+volatile = "0.2.0"
 clippy = "0.0.121"
 
 [dependencies.stm32f7_discovery]
