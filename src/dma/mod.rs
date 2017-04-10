@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use core::mem::size_of;
 use board::dma;
 use dma::detail::Dma;
 
@@ -10,7 +9,14 @@ mod detail;
 pub enum Error {
     StreamNotReady,
 
-    InvalidCount,
+    TransactionCountNotAMultipleOf(u16),
+    UnalignedMemoryAddress,
+    UnalignedPeripheralAddress,
+    CannotUseMemoryToMemoryTransferWithCircularMode,
+    CannotUseMemoryToMemoryTransferWithDirectMode,
+    MemoryAccessWouldCrossOneKilobyteBoundary,
+    PeripheralAccessWouldCrossOneKilobyteBoundary,
+    InvalidFifoThresholdMemoryBurstCombination,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -27,7 +33,7 @@ pub enum Stream {
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Channel {
+pub enum Channel {
     C0 = 0b000,
     C1 = 0b001,
     C2 = 0b010,
@@ -47,6 +53,15 @@ pub enum BurstMode {
     Incremental16 = 0b11,
 }
 
+impl BurstMode {
+    fn get_size(&self) -> u32 {
+        match *self {
+            BurstMode::SingleTransfer => 1,
+            _ => 1 << (*self as u32 + 1)
+        }
+    }
+}
+
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MemoryIndex {
@@ -54,11 +69,10 @@ pub enum MemoryIndex {
     M1 = 1,
 }
 
-#[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DoubleBufferingMode {
-    Disable = 0,
-    SwitchMemoryTargetAfterTransfer = 1,
+    Disable,
+    UseSecondBuffer(*mut u8),
 }
 
 #[repr(u8)]
@@ -83,6 +97,12 @@ pub enum Width {
     Byte = 0b00,
     HalfWord = 0b01,
     Word = 0b10,
+}
+
+impl Width {
+    fn get_size(&self) -> u32 {
+        1 << *self as u32
+    }
 }
 
 #[repr(u8)]
@@ -156,11 +176,34 @@ pub enum DirectMode {
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum FifoThreshold {
+pub enum FifoThreshold {
     Quarter = 0b00,
     Half = 0b01,
     ThreeQuarter = 0b10,
     Full = 0b11,
+}
+
+impl FifoThreshold {
+    fn get_numerator(&self) -> u32 {
+        match *self {
+            FifoThreshold::Quarter => 1,
+            FifoThreshold::Half => 2,
+            FifoThreshold::ThreeQuarter => 3,
+            FifoThreshold::Full => 4,
+        }
+    }
+
+    fn get_denominator(&self) -> u32 {
+        4
+    }
+}
+
+#[derive(Debug)]
+pub struct DmaTransferNode {
+    increment_mode: IncrementMode,
+    burst_mode: BurstMode,
+    address: *mut u8,
+    transaction_width: Width,
 }
 
 #[derive(Debug)]
@@ -169,54 +212,124 @@ pub struct DmaTransfer {
     channel: Channel,
     priority: PriorityLevel,
     direction: Direction,
-    source: *mut u8,
-    destination: *mut u8,
-    width: Width,
-    count: u16,
+    circular_mode: CircularMode,
+    double_buffering_mode: DoubleBufferingMode,
+    flow_controller: FlowContoller,
+    peripheral_increment_offset_size: PeripheralIncrementOffsetSize,
+    peripheral: DmaTransferNode,
+    memory: DmaTransferNode,
+    transaction_count: u16,
+    direct_mode: DirectMode,
+    fifo_threshold: FifoThreshold,
 }
 
 impl DmaTransfer {
-    pub fn setup(&self, dma: &mut Dma) -> Result<(), Error> {
+    pub fn is_valid(&self) -> Option<Error> {
+        let fifo_size = 16;
+        let apply_circular_mode_limitations = self.circular_mode == CircularMode::Enable || self.double_buffering_mode != DoubleBufferingMode::Disable;
+        let mwidth = self.memory.transaction_width.get_size();
+        let pwidth = match self.peripheral_increment_offset_size {
+            PeripheralIncrementOffsetSize::Force32Bit => 4,
+            PeripheralIncrementOffsetSize::UsePSize => self.peripheral.transaction_width.get_size(),
+        };
+        let mburst_size = self.memory.burst_mode.get_size() * mwidth;
+        let pburst_size = self.peripheral.burst_mode.get_size() * pwidth;
+        let mcount_factor = (mburst_size / pwidth) as u16;
+        let pcount_factor = pburst_size as u16;
+        let mdata_before_first_kb_boundary = 1024 - (self.memory.address as u32 % 1024);
+        let pdata_before_first_kb_boundary = 1024 - (self.peripheral.address as u32 % 1024);
+        let mdata_size = mwidth * match self.memory.increment_mode {
+             IncrementMode::Increment => self.transaction_count as u32,
+             IncrementMode::Fixed => 1,
+        };
+        let pdata_size = pwidth * match self.peripheral.increment_mode {
+             IncrementMode::Increment => self.transaction_count as u32,
+             IncrementMode::Fixed => 1,
+        };
+
+        if mcount_factor == 0 || self.transaction_count % mcount_factor != 0 {
+            Some(Error::TransactionCountNotAMultipleOf(mcount_factor))
+        } else if self.transaction_count % pcount_factor != 0 {
+            Some(Error::TransactionCountNotAMultipleOf(pcount_factor))
+        } else if self.peripheral.address as u32 % self.peripheral.transaction_width.get_size() != 0 {
+            Some(Error::UnalignedPeripheralAddress)
+        } else if self.memory.address as u32 % self.memory.transaction_width.get_size() != 0 {
+            Some(Error::UnalignedMemoryAddress)
+        } else if apply_circular_mode_limitations && self.direction == Direction::MemoryToMemory {
+            Some(Error::CannotUseMemoryToMemoryTransferWithCircularMode)
+        } else if self.direct_mode == DirectMode::Enable && self.direction == Direction::MemoryToMemory {
+            Some(Error::CannotUseMemoryToMemoryTransferWithDirectMode)
+        } else if mdata_before_first_kb_boundary > mdata_size && mdata_before_first_kb_boundary % mburst_size != 0 {
+            Some(Error::MemoryAccessWouldCrossOneKilobyteBoundary)
+        } else if pdata_before_first_kb_boundary > pdata_size && pdata_before_first_kb_boundary % pburst_size != 0 {
+            Some(Error::PeripheralAccessWouldCrossOneKilobyteBoundary)
+        } else if (self.fifo_threshold.get_numerator() * fifo_size) % (self.fifo_threshold.get_denominator() * mburst_size) != 0 {
+            Some(Error::InvalidFifoThresholdMemoryBurstCombination)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_ready(&self, dma: &Dma) -> bool {
+        dma.sxcr_en(self.stream) == StreamControl::Disable
+    }
+
+    pub fn is_running(&self, dma: &Dma) -> bool {
+        dma.sxcr_en(self.stream) == StreamControl::Enable
+    }
+
+    pub fn is_finished(&self, dma: &Dma) -> bool {
+        dma.sxcr_en(self.stream) == StreamControl::Enable
+    }
+
+    pub fn startup(&self, dma: &mut Dma) -> Result<(), Error> {
         let result = self.is_valid();
 
-        if result.is_ok() {
+        if result.is_none() {
             if self.is_ready(dma) {
                 self.configure(dma);
+                self.start(dma);
+
+                Ok(())
             } else {
-                return Err(Error::StreamNotReady);
+                Err(Error::StreamNotReady)
             }
-        }
-        
-        result
-    }
-
-    pub fn is_valid(&self) -> Result<(), Error> {
-        if self.count < 1 {
-            Err(Error::InvalidCount)
         } else {
-            Ok(())
+            Err(result.unwrap())
         }
     }
 
-    pub fn is_ready(&self, dma: &mut Dma) -> bool {
-        true
+    pub fn shutdown(&self, dma: &mut Dma) {
+        self.stop(dma);
     }
 
     fn configure(&self, dma: &mut Dma) {
-        let pa = match self.direction {
-            Direction::PeripheralToMemory | Direction::MemoryToMemory => self.source,
-            Direction::MemoryToPeripheral => self.destination,
-        };
-        let ma = match self.direction {
-            Direction::PeripheralToMemory | Direction::MemoryToMemory => self.destination,
-            Direction::MemoryToPeripheral => self.source,
-        };
-
         dma.set_sxcr_channel(self.stream, self.channel);
         dma.set_sxcr_pl(self.stream, self.priority);
         dma.set_sxcr_dir(self.stream, self.direction);
-        dma.set_sxpar(self.stream, pa as u32);
-        dma.set_sxmxar(self.stream, MemoryIndex::M0, ma as u32);
+        dma.set_sxcr_circ(self.stream, self.circular_mode);
+        dma.set_sxcr_dbm(self.stream, self.double_buffering_mode);
+        dma.set_sxcr_pfctrl(self.stream, self.flow_controller);
+        dma.set_sxcr_psize(self.stream, self.peripheral.transaction_width);
+        dma.set_sxcr_pinc(self.stream, self.peripheral.increment_mode);
+        dma.set_sxcr_pburst(self.stream, self.peripheral.burst_mode);
+        dma.set_sxcr_pincos(self.stream, self.peripheral_increment_offset_size);
+        dma.set_sxpar(self.stream, self.peripheral.address);
+        dma.set_sxcr_msize(self.stream, self.memory.transaction_width);
+        dma.set_sxcr_minc(self.stream, self.memory.increment_mode);
+        dma.set_sxcr_mburst(self.stream, self.memory.burst_mode);
+        dma.set_sxmxar(self.stream, MemoryIndex::M0, self.memory.address);
+        dma.set_sxndtr(self.stream, self.transaction_count);
+        dma.set_sxfcr_dmdis(self.stream, self.direct_mode);
+        dma.set_sxfcr_fth(self.stream, self.fifo_threshold);
+    }
+
+    fn start(&self, dma: &mut Dma) {
+        dma.set_sxcr_en(self.stream, StreamControl::Enable);
+    }
+
+    fn stop(&self, dma: &mut Dma) {
+        dma.set_sxcr_en(self.stream, StreamControl::Disable);
     }
 }
 
@@ -226,15 +339,12 @@ pub struct DmaManager {
 
 impl DmaManager {
     pub fn init(dma: &'static mut dma::Dma) -> DmaManager {
-        // Sanity check
-        assert_eq!(size_of::<*mut u8>(), size_of::<u32>());
-
         DmaManager {
-            controller: Dma::init(dma)
+            controller: Dma::init(dma),
         }
     }
 
-    pub fn setup_transfer(&mut self, transfer: DmaTransfer) -> Result<(), Error> {
+    pub fn setup_transfer(&mut self, transfer: &mut DmaTransfer) -> Result<(), Error> {
         transfer.setup(&mut self.controller)
     }
 }

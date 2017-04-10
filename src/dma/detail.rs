@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use core::mem::size_of;
 use core::mem::transmute;
 use board::dma;
 use volatile;
@@ -11,6 +12,9 @@ pub struct Dma {
 
 impl Dma {
     pub fn init(dma: &'static mut dma::Dma) -> Dma {
+        // Sanity check
+        assert_eq!(size_of::<*mut u8>(), size_of::<u32>());
+
         // Reset all registers to default
         dma.lifcr.write(Default::default());
         dma.hifcr.write(Default::default());
@@ -81,80 +85,120 @@ impl Dma {
         }
     }
 
-    pub unsafe fn sxcr_channel(&mut self, stream: Stream) -> Channel {
-        transmute(self._sxcr(stream).read().chsel())
+    pub fn sxcr_channel(&mut self, stream: Stream) -> Channel {
+        unsafe {
+            transmute(self._sxcr(stream).read().chsel())
+        }
     }
 
-    pub unsafe fn sxcr_mburst(&mut self, stream: Stream) -> BurstMode {
-        transmute(self._sxcr(stream).read().mburst())
+    pub fn sxcr_mburst(&mut self, stream: Stream) -> BurstMode {
+        unsafe {
+            transmute(self._sxcr(stream).read().mburst())
+        }
     }
 
-    pub unsafe fn sxcr_pburst(&mut self, stream: Stream) -> BurstMode {
-        transmute(self._sxcr(stream).read().pburst())
+    pub fn sxcr_pburst(&mut self, stream: Stream) -> BurstMode {
+        unsafe {
+            transmute(self._sxcr(stream).read().pburst())
+        }
     }
 
-    pub unsafe fn sxcr_ct(&mut self, stream: Stream) -> MemoryIndex {
-        transmute(bool_to_u8(self._sxcr(stream).read().ct()))
+    pub fn sxcr_ct(&mut self, stream: Stream) -> MemoryIndex {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().ct()))
+        }
     }
 
-    pub unsafe fn sxcr_dbm(&mut self, stream: Stream) -> DoubleBufferingMode {
-        transmute(bool_to_u8(self._sxcr(stream).read().dbm()))
+    pub fn sxcr_dbm(&mut self, stream: Stream) -> DoubleBufferingMode {
+        if self._sxcr(stream).read().dbm() {
+            DoubleBufferingMode::UseSecondBuffer(self.sxmxar(stream, MemoryIndex::M1))
+        } else {
+            DoubleBufferingMode::Disable
+        }
     }
 
-    pub unsafe fn sxcr_pl(&mut self, stream: Stream) -> PriorityLevel {
-        transmute(self._sxcr(stream).read().pl())
+    pub fn sxcr_pl(&mut self, stream: Stream) -> PriorityLevel {
+        unsafe {
+            transmute(self._sxcr(stream).read().pl())
+        }
     }
 
-    pub unsafe fn sxcr_pincos(&mut self, stream: Stream) -> PeripheralIncrementOffsetSize {
-        transmute(bool_to_u8(self._sxcr(stream).read().pincos()))
+    pub fn sxcr_pincos(&mut self, stream: Stream) -> PeripheralIncrementOffsetSize {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().pincos()))
+        }
     }
 
-    pub unsafe fn sxcr_msize(&mut self, stream: Stream) -> Width {
-        transmute(self._sxcr(stream).read().msize())
+    pub fn sxcr_msize(&mut self, stream: Stream) -> Width {
+        unsafe {
+            transmute(self._sxcr(stream).read().msize())
+        }
     }
 
-    pub unsafe fn sxcr_psize(&mut self, stream: Stream) -> Width {
-        transmute(self._sxcr(stream).read().psize())
+    pub fn sxcr_psize(&mut self, stream: Stream) -> Width {
+        unsafe {
+            transmute(self._sxcr(stream).read().psize())
+        }
     }
 
-    pub unsafe fn sxcr_minc(&mut self, stream: Stream) -> IncrementMode {
-        transmute(bool_to_u8(self._sxcr(stream).read().minc()))
+    pub fn sxcr_minc(&mut self, stream: Stream) -> IncrementMode {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().minc()))
+        }
     }
 
-    pub unsafe fn sxcr_pinc(&mut self, stream: Stream) -> IncrementMode {
-        transmute(bool_to_u8(self._sxcr(stream).read().pinc()))
+    pub fn sxcr_pinc(&mut self, stream: Stream) -> IncrementMode {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().pinc()))
+        }
     }
 
-    pub unsafe fn sxcr_circ(&mut self, stream: Stream) -> CircularMode {
-        transmute(bool_to_u8(self._sxcr(stream).read().circ()))
+    pub fn sxcr_circ(&mut self, stream: Stream) -> CircularMode {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().circ()))
+        }
     }
 
-    pub unsafe fn sxcr_dir(&mut self, stream: Stream) -> Direction {
-        transmute(self._sxcr(stream).read().dir())
+    pub fn sxcr_dir(&mut self, stream: Stream) -> Direction {
+        unsafe {
+            transmute(self._sxcr(stream).read().dir())
+        }
     }
 
-    pub unsafe fn sxcr_pfctrl(&mut self, stream: Stream) -> FlowContoller {
-        transmute(bool_to_u8(self._sxcr(stream).read().pfctrl()))
+    pub fn sxcr_pfctrl(&mut self, stream: Stream) -> FlowContoller {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().pfctrl()))
+        }
     }
 
-    pub unsafe fn sxcr_tcie(&mut self, stream: Stream) -> InterruptControl {
-        transmute(bool_to_u8(self._sxcr(stream).read().tcie()))
+    pub fn sxcr_tcie(&mut self, stream: Stream) -> InterruptControl {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().tcie()))
+        }
     }
 
-    pub unsafe fn sxcr_htie(&mut self, stream: Stream) -> InterruptControl {
-        transmute(bool_to_u8(self._sxcr(stream).read().htie()))
+    pub fn sxcr_htie(&mut self, stream: Stream) -> InterruptControl {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().htie()))
+        }
     }
 
-    pub unsafe fn sxcr_teie(&mut self, stream: Stream) -> InterruptControl {
-        transmute(bool_to_u8(self._sxcr(stream).read().teie()))
+    pub fn sxcr_teie(&mut self, stream: Stream) -> InterruptControl {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().teie()))
+        }
     }
 
-    pub unsafe fn sxcr_dmeie(&mut self, stream: Stream) -> InterruptControl {
-        transmute(bool_to_u8(self._sxcr(stream).read().dmeie()))
+    pub fn sxcr_dmeie(&mut self, stream: Stream) -> InterruptControl {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().dmeie()))
+        }
     }
 
-    pub unsafe fn sxcr_en(&mut self, stream: Stream) -> StreamControl {
-        transmute(bool_to_u8(self._sxcr(stream).read().en()))
+    pub fn sxcr_en(&mut self, stream: Stream) -> StreamControl {
+        unsafe {
+            transmute(bool_to_u8(self._sxcr(stream).read().en()))
+        }
     }
 
     pub fn set_sxcr_channel(&mut self, stream: Stream, channel: Channel) {
@@ -174,7 +218,14 @@ impl Dma {
     }
 
     pub fn set_sxcr_dbm(&mut self, stream: Stream, mode: DoubleBufferingMode) {
-        self._sxcr(stream).update(|x| x.set_dbm(mode as u8 != 0))
+        let dbm_value = match mode {
+                DoubleBufferingMode::Disable => false,
+                DoubleBufferingMode::UseSecondBuffer(buf) => {
+                    self.set_sxmxar(stream, MemoryIndex::M1, buf);
+                    true
+                },
+            };
+        self._sxcr(stream).update(|x| x.set_dbm(dbm_value))
     }
 
     pub fn set_sxcr_pl(&mut self, stream: Stream, priority: PriorityLevel) {
@@ -267,12 +318,12 @@ impl Dma {
         }
     }
 
-    pub fn sxpar(&mut self, stream: Stream) -> u32 {
-        self._sxpar(stream).read().pa()
+    pub fn sxpar(&mut self, stream: Stream) -> *mut u8 {
+        self._sxpar(stream).read().pa() as *mut u8
     }
 
-    pub fn set_sxpar(&mut self, stream: Stream, address: u32) {
-        self._sxpar(stream).update(|x| x.set_pa(address))
+    pub fn set_sxpar(&mut self, stream: Stream, address: *mut u8) {
+        self._sxpar(stream).update(|x| x.set_pa(address as u32))
     }
 
     fn _sxmxar(&mut self, stream: Stream, buffer: MemoryIndex) -> &mut volatile::ReadWrite<dma::S0m0ar> {
@@ -300,12 +351,12 @@ impl Dma {
         }
     }
 
-    pub fn sxmxar(&mut self, stream: Stream, mi: MemoryIndex) -> u32 {
-        self._sxmxar(stream, mi).read().m0a()
+    pub fn sxmxar(&mut self, stream: Stream, mi: MemoryIndex) -> *mut u8 {
+        self._sxmxar(stream, mi).read().m0a() as *mut u8
     }
 
-    pub fn set_sxmxar(&mut self, stream: Stream, mi: MemoryIndex, address: u32) {
-        self._sxmxar(stream, mi).update(|x| x.set_m0a(address))
+    pub fn set_sxmxar(&mut self, stream: Stream, mi: MemoryIndex, address: *mut u8) {
+        self._sxmxar(stream, mi).update(|x| x.set_m0a(address as u32))
     }
 
     fn _sxfcr(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0fcr> {
@@ -321,20 +372,28 @@ impl Dma {
         }
     }
 
-    pub unsafe fn sxfcr_feie(&mut self, stream: Stream) -> InterruptControl {
-        transmute(bool_to_u8(self._sxfcr(stream).read().feie()))
+    pub fn sxfcr_feie(&mut self, stream: Stream) -> InterruptControl {
+        unsafe {
+            transmute(bool_to_u8(self._sxfcr(stream).read().feie()))
+        }
     }
 
-    pub unsafe fn sxfcr_fs(&mut self, stream: Stream) -> FifoStatus {
-         transmute(self._sxfcr(stream).read().fs())
+    pub fn sxfcr_fs(&mut self, stream: Stream) -> FifoStatus {
+        unsafe {
+            transmute(self._sxfcr(stream).read().fs())
+        }
     }
 
-    pub unsafe fn sxfcr_dmdis(&mut self, stream: Stream) -> DirectMode {
-        transmute(bool_to_u8(self._sxfcr(stream).read().dmdis()))
+    pub fn sxfcr_dmdis(&mut self, stream: Stream) -> DirectMode {
+        unsafe {
+            transmute(bool_to_u8(self._sxfcr(stream).read().dmdis()))
+        }
     }
 
-    pub unsafe fn sxfcr_fth(&mut self, stream: Stream) -> FifoThreshold {
-        transmute(self._sxfcr(stream).read().fth())
+    pub fn sxfcr_fth(&mut self, stream: Stream) -> FifoThreshold {
+        unsafe {
+            transmute(self._sxfcr(stream).read().fth())
+        }
     }
 
     pub fn set_sxfcr_feie(&mut self, stream: Stream, ic: InterruptControl) {
@@ -347,6 +406,99 @@ impl Dma {
 
     pub fn set_sxfcr_fth(&mut self, stream: Stream, ft: FifoThreshold) {
         self._sxfcr(stream).update(|x| x.set_fth(ft as u8))
+    }
+
+    fn _lisr(&mut self) -> volatile::ReadOnly<dma::Lisr> {
+        self.controller.lisr
+    }
+
+    fn _hisr(&mut self) -> volatile::ReadOnly<dma::Hisr> {
+        self.controller.hisr
+    }
+
+    pub fn htifx(&mut self, stream: Stream) -> InterruptState {
+        unsafe {
+            transmute(bool_to_u8(
+                match stream {
+                    Stream::S0 => self._lisr().read().htif0(),
+                    Stream::S1 => self._lisr().read().htif1(),
+                    Stream::S2 => self._lisr().read().htif2(),
+                    Stream::S3 => self._lisr().read().htif3(),
+                    Stream::S4 => self._hisr().read().htif4(),
+                    Stream::S5 => self._hisr().read().htif5(),
+                    Stream::S6 => self._hisr().read().htif6(),
+                    Stream::S7 => self._hisr().read().htif7(),
+                }
+            ))
+        }
+    }
+
+    pub fn tcifx(&mut self, stream: Stream) -> InterruptState {
+        unsafe {
+            transmute(bool_to_u8(
+                match stream {
+                    Stream::S0 => self._lisr().read().tcif0(),
+                    Stream::S1 => self._lisr().read().tcif1(),
+                    Stream::S2 => self._lisr().read().tcif2(),
+                    Stream::S3 => self._lisr().read().tcif3(),
+                    Stream::S4 => self._hisr().read().tcif4(),
+                    Stream::S5 => self._hisr().read().tcif5(),
+                    Stream::S6 => self._hisr().read().tcif6(),
+                    Stream::S7 => self._hisr().read().tcif7(),
+                }
+            ))
+        }
+    }
+
+    pub fn teifx(&mut self, stream: Stream) -> InterruptState {
+        unsafe {
+            transmute(bool_to_u8(
+                match stream {
+                    Stream::S0 => self._lisr().read().teif0(),
+                    Stream::S1 => self._lisr().read().teif1(),
+                    Stream::S2 => self._lisr().read().teif2(),
+                    Stream::S3 => self._lisr().read().teif3(),
+                    Stream::S4 => self._hisr().read().teif4(),
+                    Stream::S5 => self._hisr().read().teif5(),
+                    Stream::S6 => self._hisr().read().teif6(),
+                    Stream::S7 => self._hisr().read().teif7(),
+                }
+            ))
+        }
+    }
+
+    pub fn feifx(&mut self, stream: Stream) -> InterruptState {
+        unsafe {
+            transmute(bool_to_u8(
+                match stream {
+                    Stream::S0 => self._lisr().read().feif0(),
+                    Stream::S1 => self._lisr().read().feif1(),
+                    Stream::S2 => self._lisr().read().feif2(),
+                    Stream::S3 => self._lisr().read().feif3(),
+                    Stream::S4 => self._hisr().read().feif4(),
+                    Stream::S5 => self._hisr().read().feif5(),
+                    Stream::S6 => self._hisr().read().feif6(),
+                    Stream::S7 => self._hisr().read().feif7(),
+                }
+            ))
+        }
+    }
+
+    pub fn dmeifx(&mut self, stream: Stream) -> InterruptState {
+        unsafe {
+            transmute(bool_to_u8(
+                match stream {
+                    Stream::S0 => self._lisr().read().dmeif0(),
+                    Stream::S1 => self._lisr().read().dmeif1(),
+                    Stream::S2 => self._lisr().read().dmeif2(),
+                    Stream::S3 => self._lisr().read().dmeif3(),
+                    Stream::S4 => self._hisr().read().dmeif4(),
+                    Stream::S5 => self._hisr().read().dmeif5(),
+                    Stream::S6 => self._hisr().read().dmeif6(),
+                    Stream::S7 => self._hisr().read().dmeif7(),
+                }
+            ))
+        }
     }
 }
 
