@@ -320,6 +320,12 @@ impl DmaTransfer {
     }
 
     fn configure(&self, dma: &mut DmaManager) {
+        dma.controller.clear_htif(self.stream);
+        dma.controller.clear_tcif(self.stream);
+        dma.controller.clear_teif(self.stream);
+        dma.controller.clear_feif(self.stream);
+        dma.controller.clear_dmeif(self.stream);
+
         dma.controller.set_sxcr_channel(self.stream, self.channel);
         dma.controller.set_sxcr_pl(self.stream, self.priority);
         dma.controller.set_sxcr_dir(self.stream, self.direction);
