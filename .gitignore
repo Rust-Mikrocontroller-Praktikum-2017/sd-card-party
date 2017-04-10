@@ -3,4 +3,3 @@ target/
 rls.toml
 rls.sh
 .vscode/
-Cargo.lock
