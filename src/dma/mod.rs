@@ -225,7 +225,7 @@ pub struct DmaTransfer<'a> {
 
 impl<'a> DmaTransfer<'a> {
     pub fn is_valid(&self) -> Option<Error> {
-        const fifo_size: u32 = 16;
+        const FIFO_SIZE: u32 = 16;
         let apply_circular_mode_limitations = self.circular_mode == CircularMode::Enable || self.double_buffering_mode != DoubleBufferingMode::Disable;
         let mwidth = self.memory.transaction_width.get_size();
         let pwidth = match self.peripheral_increment_offset_size {
@@ -263,7 +263,7 @@ impl<'a> DmaTransfer<'a> {
             Some(Error::MemoryAccessWouldCrossOneKilobyteBoundary)
         } else if pdata_before_first_kb_boundary > pdata_size && pdata_before_first_kb_boundary % pburst_size != 0 {
             Some(Error::PeripheralAccessWouldCrossOneKilobyteBoundary)
-        } else if (self.fifo_threshold.get_numerator() * fifo_size) % (self.fifo_threshold.get_denominator() * mburst_size) != 0 {
+        } else if (self.fifo_threshold.get_numerator() * FIFO_SIZE) % (self.fifo_threshold.get_denominator() * mburst_size) != 0 {
             Some(Error::InvalidFifoThresholdMemoryBurstCombination)
         } else {
             None
