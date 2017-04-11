@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use board::dma;
+use board::{dma, rcc};
 use dma::detail::Dma;
 
 mod detail;
@@ -360,7 +360,25 @@ pub struct DmaManager {
 }
 
 impl DmaManager {
-    pub fn init(dma: &'static mut dma::Dma) -> DmaManager {
+    pub fn init_dma1(dma: &'static mut dma::Dma, rcc: &mut rcc::Rcc) -> DmaManager {
+       // enable DMA1 clock and wait until the clock is up
+        rcc.ahb1enr.update(|r| r.set_dma1en(true));
+        loop {
+            if rcc.ahb1enr.read().dma1en() {break;};
+        }
+
+        DmaManager {
+            controller: Dma::init(dma),
+        }
+    }
+
+    pub fn init_dma2(dma: &'static mut dma::Dma, rcc: &mut rcc::Rcc) -> DmaManager {
+       // enable DMA1 clock and wait until the clock is up
+        rcc.ahb1enr.update(|r| r.set_dma2en(true));
+        loop {
+            if rcc.ahb1enr.read().dma2en() {break;};
+        }
+
         DmaManager {
             controller: Dma::init(dma),
         }

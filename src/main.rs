@@ -140,11 +140,12 @@ fn main(hw: board::Hardware) -> ! {
     stm32f7::init_stdout(lcd.layer_1().unwrap());
     println!("Welcome to the SD Card Party!\n");
 
+    // DMA2 init
+    let mut dma = dma::DmaManager::init_dma2(dma_2, rcc);
+
     // SD stuff
     let mut sd_handle = sd::SdHandle::new(sdmmc);
     sd_handle.init(&mut gpio, rcc);
-
-    let mut dma = dma::DmaManager::init(dma_2);
 
     // TODO(ca) add further initialization code here
 
