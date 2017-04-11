@@ -1,6 +1,6 @@
 use super::*;
 
-impl<'a> SdHandle<'a> {
+impl SdHandle {
     /// Send CMD0, which resets all cards into the idle state
     pub fn cmd_go_idle_state(&mut self) -> low_level::SdmmcErrorCode {
         self.registers.arg.update(|arg| arg.set_cmdarg(0)); // only stuff bits in argument
@@ -15,7 +15,7 @@ impl<'a> SdHandle<'a> {
             cmd.set_cpsmen(true);
             cmd.set_cmdindex(1);
         });
-        self.tw.print_str("Tried sending CMD0. ");
+        print!("Tried sending CMD0. ");
 
         self.get_cmd_error()
     }
@@ -68,14 +68,14 @@ impl<'a> SdHandle<'a> {
     /// and SdmmcErrorCode::None is returned. If version 2.0 is not supported an error is returned.
     // represents SDMMC_GetCmdResp7
     fn get_response7(&mut self) -> low_level::SdmmcErrorCode {
-        self.tw.print_str("After sending CMD8: ");
+        print!("After sending CMD8: ");
         let mut timeout_counter = 50000;
         loop {
             timeout_counter -= 1;
             if timeout_counter == 0 {
                 // Card does not support version 2.0
                 // TODO: schon hier setzen? -> self.sd_card.version = CardVersion::V1x;
-                self.tw.print_str("Software timeout. ");
+                print!("Software timeout. ");
                 return low_level::TIMEOUT
             }
             if self.registers.sta.read().ccrcfail() ||
@@ -89,16 +89,16 @@ impl<'a> SdHandle<'a> {
 
         if self.registers.sta.read().ctimeout() {
             // Command timeout
-            self.tw.print_str("Command timeout. ");
+            print!("Command timeout. ");
             return low_level::CMD_RSP_TIMEOUT;
         }
 
         // TODO: remove Print-Debugging
         if self.registers.sta.read().ccrcfail() {
-            self.tw.print_str("Command received, but CRC failed. ");
+            print!("Command received, but CRC failed. ");
         }
         if self.registers.sta.read().cmdrend() {
-            self.tw.print_str("Command received correctly. ");
+            print!("Command received correctly. ");
         }
 
         // If command received (either with or withour working crc) version 2.x is supported

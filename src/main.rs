@@ -7,6 +7,7 @@
 
 #![allow(dead_code)]
 
+#[macro_use]
 extern crate stm32f7_discovery as stm32f7;
 extern crate volatile;
 extern crate r0;
@@ -136,14 +137,11 @@ fn main(hw: board::Hardware) -> ! {
     lcd.layer_1().unwrap().clear();
 
     // TODO(ca) maybe draw some nice loading screen or something...
-    let mut lcd_layer_1 = lcd.layer_1().unwrap();
-    let mut tw = lcd_layer_1.text_writer().unwrap();
-    tw.print_str("Welcome to the SD Card Party!\n");
+    stm32f7::init_stdout(lcd.layer_1().unwrap());
+    println!("Welcome to the SD Card Party!\n");
 
     // SD stuff
-    let mut sd_lcd_layer_1 = lcd.layer_1().unwrap();
-    let mut sd_tw = sd_lcd_layer_1.text_writer().unwrap();
-    let mut sd_handle = sd::SdHandle::new(sdmmc, &mut sd_tw);
+    let mut sd_handle = sd::SdHandle::new(sdmmc);
     sd_handle.init(&mut gpio, rcc);
 
     let mut dma = dma::DmaManager::init(dma_2);
@@ -185,7 +183,11 @@ fn main(hw: board::Hardware) -> ! {
         fifo_threshold: dma::FifoThreshold::Full,
     };
 
+    println!("");
+
     dma_transfer.startup();
+
+    let mut only_once = true;
 
     let mut last_led_toggle = system_clock::ticks();
     loop {
@@ -199,9 +201,9 @@ fn main(hw: board::Hardware) -> ! {
             last_led_toggle = ticks;
         }
 
-        if !dma_transfer.is_active() {
-            let s = format!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), source, destination);
-            tw.print_str(&s);
+        if only_once && !dma_transfer.is_active() {
+            println!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), source, destination);
+            only_once = false;
         }
     }
 }

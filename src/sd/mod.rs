@@ -8,7 +8,7 @@ use stm32f7::lcd;
 
 /// SD handle
 // represents SD_HandleTypeDef
-pub struct SdHandle<'a> {
+pub struct SdHandle {
     registers: &'static mut Sdmmc,
     lock_type: LockType,
     //tx_buffer_ptr: *const u8,
@@ -20,7 +20,6 @@ pub struct SdHandle<'a> {
     error_code: low_level::SdmmcErrorCode,
     //dma_handle: &'static Dma, // TODO: vermutlich wird mehr gebraucht... -> Rx und Tx Dma Handle, evtl. bei DMA schon implementiert
     sd_card: CardInfo,
-    tw: &'a mut lcd::TextWriter,
 }
 
 // represents Status
@@ -153,7 +152,7 @@ pub enum CardState {
     Ident = 2,
 }
 
-impl<'a> SdHandle<'a> {
+impl SdHandle {
     /// Bus can be 1, 4 or 8 bits wide.
     // represents HAL_SD_ConfigWideBusOperation
     pub fn set_bus_operation_mode(&mut self, mode: BusMode) -> Status {
