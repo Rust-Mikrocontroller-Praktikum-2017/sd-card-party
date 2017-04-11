@@ -1,16 +1,28 @@
 #![no_std]
 #![no_main]
 #![feature(plugin)]
+#![feature(collections)]
 #![plugin(clippy)]
+
+#![allow(dead_code)]
 
 extern crate stm32f7_discovery as stm32f7;
 extern crate volatile;
 extern crate r0;
+// hardware register structs with accessor methods
+extern crate embedded_stm32f7 as embed_stm;
+#[macro_use]
+extern crate collections;
+
+#[macro_use]
+extern crate bitflags;
 
 use stm32f7::{system_clock, sdram, lcd, board, embedded};
 use embedded::interfaces::gpio::{self, Gpio};
+use embed_stm::sdmmc::Sdmmc;
 
 mod dma;
+mod sd;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {
@@ -44,6 +56,7 @@ pub unsafe extern "C" fn reset() -> ! {
     main(board::hw());
 }
 
+#[inline(never)]
 fn main(hw: board::Hardware) -> ! {
     let board::Hardware {
         rcc,
@@ -63,6 +76,7 @@ fn main(hw: board::Hardware) -> ! {
         gpio_i,
         gpio_j,
         gpio_k,
+        sdmmc,
         ..
     } = hw;
 
@@ -119,7 +133,11 @@ fn main(hw: board::Hardware) -> ! {
 
     // TODO(ca) maybe draw some nice loading screen or something...
     let mut tw = lcd.text_writer().unwrap();
-    tw.print_str("Welcome to the SD Card Party!");
+    tw.print_str("Welcome to the SD Card Party! ");
+
+    // SD stuff
+    let mut sd_handle = sd::SdHandle::new(sdmmc, tw);
+    sd_handle.init(&mut gpio, rcc);
 
     dma::DmaManager::init(dma_2);
 
