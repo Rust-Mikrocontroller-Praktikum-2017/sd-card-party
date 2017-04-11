@@ -298,13 +298,12 @@ impl<'a> DmaTransfer<'a> {
         self.is_running() && !self.is_finished() && !self.is_error()
     }
 
-    pub fn startup(&mut self) -> Result<(), Error> {
+    pub fn prepare(&mut self) -> Result<(), Error> {
         let result = self.is_valid();
 
         if result.is_none() {
             if self.is_ready() {
                 self.configure();
-                self.start();
 
                 Ok(())
             } else {
@@ -315,8 +314,21 @@ impl<'a> DmaTransfer<'a> {
         }
     }
 
-    pub fn shutdown(&mut self) {
-        self.stop();
+    pub fn start(&mut self) {
+        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Enable);
+    }
+
+    pub fn stop(&mut self) {
+        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Disable);
+    }
+
+    pub fn wait(&mut self) {
+        while self.is_active() {}
+    }
+
+    pub fn run_and_wait(&mut self) {
+        self.start();
+        self.wait()
     }
 
     fn configure(&mut self) {
@@ -344,14 +356,6 @@ impl<'a> DmaTransfer<'a> {
         self.dma.controller.set_sxndtr(self.stream, self.transaction_count);
         self.dma.controller.set_sxfcr_dmdis(self.stream, self.direct_mode);
         self.dma.controller.set_sxfcr_fth(self.stream, self.fifo_threshold);
-    }
-
-    fn start(&mut self) {
-        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Enable);
-    }
-
-    fn stop(&mut self) {
-        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Disable);
     }
 }
 

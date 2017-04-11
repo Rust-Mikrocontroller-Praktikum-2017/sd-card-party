@@ -186,7 +186,8 @@ fn main(hw: board::Hardware) -> ! {
 
     println!("");
 
-    dma_transfer.startup();
+    dma_transfer.prepare().expect("Failed to prepare DMA transfer");
+    dma_transfer.start();
 
     let mut only_once = true;
 
@@ -204,6 +205,7 @@ fn main(hw: board::Hardware) -> ! {
 
         if only_once && !dma_transfer.is_active() {
             println!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), source, destination);
+            dma_transfer.stop();
             only_once = false;
         }
     }
