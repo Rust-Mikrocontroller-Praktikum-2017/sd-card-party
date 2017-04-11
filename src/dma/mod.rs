@@ -200,30 +200,30 @@ impl FifoThreshold {
 
 #[derive(Debug)]
 pub struct DmaTransferNode {
-    increment_mode: IncrementMode,
-    burst_mode: BurstMode,
-    address: *mut u8,
-    transaction_width: Width,
+    pub increment_mode: IncrementMode,
+    pub burst_mode: BurstMode,
+    pub address: *mut u8,
+    pub transaction_width: Width,
 }
 
-#[derive(Debug)]
-pub struct DmaTransfer {
-    stream: Stream,
-    channel: Channel,
-    priority: PriorityLevel,
-    direction: Direction,
-    circular_mode: CircularMode,
-    double_buffering_mode: DoubleBufferingMode,
-    flow_controller: FlowContoller,
-    peripheral_increment_offset_size: PeripheralIncrementOffsetSize,
-    peripheral: DmaTransferNode,
-    memory: DmaTransferNode,
-    transaction_count: u16,
-    direct_mode: DirectMode,
-    fifo_threshold: FifoThreshold,
+pub struct DmaTransfer<'a> {
+    pub dma: &'a mut DmaManager,
+    pub stream: Stream,
+    pub channel: Channel,
+    pub priority: PriorityLevel,
+    pub direction: Direction,
+    pub circular_mode: CircularMode,
+    pub double_buffering_mode: DoubleBufferingMode,
+    pub flow_controller: FlowContoller,
+    pub peripheral_increment_offset_size: PeripheralIncrementOffsetSize,
+    pub peripheral: DmaTransferNode,
+    pub memory: DmaTransferNode,
+    pub transaction_count: u16,
+    pub direct_mode: DirectMode,
+    pub fifo_threshold: FifoThreshold,
 }
 
-impl DmaTransfer {
+impl<'a> DmaTransfer<'a> {
     pub fn is_valid(&self) -> Option<Error> {
         const fifo_size: u32 = 16;
         let apply_circular_mode_limitations = self.circular_mode == CircularMode::Enable || self.double_buffering_mode != DoubleBufferingMode::Disable;
@@ -270,41 +270,41 @@ impl DmaTransfer {
         }
     }
 
-    pub fn is_ready(&self, dma: &DmaManager) -> bool {
-        dma.controller.sxcr_en(self.stream) == StreamControl::Disable
+    pub fn is_ready(&mut self) -> bool {
+        self.dma.controller.sxcr_en(self.stream) == StreamControl::Disable
     }
 
-    pub fn is_running(&self, dma: &DmaManager) -> bool {
-        dma.controller.sxcr_en(self.stream) == StreamControl::Enable
+    pub fn is_running(&mut self) -> bool {
+        self.dma.controller.sxcr_en(self.stream) == StreamControl::Enable
     }
 
-    pub fn is_finished(&self, dma: &DmaManager) -> bool {
-        dma.controller.tcif(self.stream) == InterruptState::Raised
+    pub fn is_finished(&mut self) -> bool {
+        self.dma.controller.tcif(self.stream) == InterruptState::Raised
     }
 
-    pub fn is_error(&self, dma: &DmaManager) -> bool {
-        self.is_transfer_error(dma) || self.is_direct_mode_error(dma)
+    pub fn is_error(&mut self) -> bool {
+        self.is_transfer_error() || self.is_direct_mode_error()
     }
 
-    pub fn is_transfer_error(&self, dma: &DmaManager) -> bool {
-        dma.controller.teif(self.stream) == InterruptState::Raised        
+    pub fn is_transfer_error(&mut self) -> bool {
+        self.dma.controller.teif(self.stream) == InterruptState::Raised        
     }
 
-    pub fn is_direct_mode_error(&self, dma: &DmaManager) -> bool {
-        dma.controller.dmeif(self.stream) == InterruptState::Raised        
+    pub fn is_direct_mode_error(&mut self) -> bool {
+        self.dma.controller.dmeif(self.stream) == InterruptState::Raised        
     }
 
-    pub fn is_active(&self, dma: &DmaManager) -> bool {
-        self.is_running(dma) && !self.is_finished(dma) && !self.is_error(dma)
+    pub fn is_active(&mut self) -> bool {
+        self.is_running() && !self.is_finished() && !self.is_error()
     }
 
-    pub fn startup(&self, dma: &mut DmaManager) -> Result<(), Error> {
+    pub fn startup(&mut self) -> Result<(), Error> {
         let result = self.is_valid();
 
         if result.is_none() {
-            if self.is_ready(dma) {
-                self.configure(dma);
-                self.start(dma);
+            if self.is_ready() {
+                self.configure();
+                self.start();
 
                 Ok(())
             } else {
@@ -315,43 +315,43 @@ impl DmaTransfer {
         }
     }
 
-    pub fn shutdown(&self, dma: &mut DmaManager) {
-        self.stop(&mut dma);
+    pub fn shutdown(&mut self) {
+        self.stop();
     }
 
-    fn configure(&self, dma: &mut DmaManager) {
-        dma.controller.clear_htif(self.stream);
-        dma.controller.clear_tcif(self.stream);
-        dma.controller.clear_teif(self.stream);
-        dma.controller.clear_feif(self.stream);
-        dma.controller.clear_dmeif(self.stream);
+    fn configure(&mut self) {
+        self.dma.controller.clear_htif(self.stream);
+        self.dma.controller.clear_tcif(self.stream);
+        self.dma.controller.clear_teif(self.stream);
+        self.dma.controller.clear_feif(self.stream);
+        self.dma.controller.clear_dmeif(self.stream);
 
-        dma.controller.set_sxcr_channel(self.stream, self.channel);
-        dma.controller.set_sxcr_pl(self.stream, self.priority);
-        dma.controller.set_sxcr_dir(self.stream, self.direction);
-        dma.controller.set_sxcr_circ(self.stream, self.circular_mode);
-        dma.controller.set_sxcr_dbm(self.stream, self.double_buffering_mode);
-        dma.controller.set_sxcr_pfctrl(self.stream, self.flow_controller);
-        dma.controller.set_sxcr_psize(self.stream, self.peripheral.transaction_width);
-        dma.controller.set_sxcr_pinc(self.stream, self.peripheral.increment_mode);
-        dma.controller.set_sxcr_pburst(self.stream, self.peripheral.burst_mode);
-        dma.controller.set_sxcr_pincos(self.stream, self.peripheral_increment_offset_size);
-        dma.controller.set_sxpar(self.stream, self.peripheral.address);
-        dma.controller.set_sxcr_msize(self.stream, self.memory.transaction_width);
-        dma.controller.set_sxcr_minc(self.stream, self.memory.increment_mode);
-        dma.controller.set_sxcr_mburst(self.stream, self.memory.burst_mode);
-        dma.controller.set_sxmxar(self.stream, MemoryIndex::M0, self.memory.address);
-        dma.controller.set_sxndtr(self.stream, self.transaction_count);
-        dma.controller.set_sxfcr_dmdis(self.stream, self.direct_mode);
-        dma.controller.set_sxfcr_fth(self.stream, self.fifo_threshold);
+        self.dma.controller.set_sxcr_channel(self.stream, self.channel);
+        self.dma.controller.set_sxcr_pl(self.stream, self.priority);
+        self.dma.controller.set_sxcr_dir(self.stream, self.direction);
+        self.dma.controller.set_sxcr_circ(self.stream, self.circular_mode);
+        self.dma.controller.set_sxcr_dbm(self.stream, self.double_buffering_mode);
+        self.dma.controller.set_sxcr_pfctrl(self.stream, self.flow_controller);
+        self.dma.controller.set_sxcr_psize(self.stream, self.peripheral.transaction_width);
+        self.dma.controller.set_sxcr_pinc(self.stream, self.peripheral.increment_mode);
+        self.dma.controller.set_sxcr_pburst(self.stream, self.peripheral.burst_mode);
+        self.dma.controller.set_sxcr_pincos(self.stream, self.peripheral_increment_offset_size);
+        self.dma.controller.set_sxpar(self.stream, self.peripheral.address);
+        self.dma.controller.set_sxcr_msize(self.stream, self.memory.transaction_width);
+        self.dma.controller.set_sxcr_minc(self.stream, self.memory.increment_mode);
+        self.dma.controller.set_sxcr_mburst(self.stream, self.memory.burst_mode);
+        self.dma.controller.set_sxmxar(self.stream, MemoryIndex::M0, self.memory.address);
+        self.dma.controller.set_sxndtr(self.stream, self.transaction_count);
+        self.dma.controller.set_sxfcr_dmdis(self.stream, self.direct_mode);
+        self.dma.controller.set_sxfcr_fth(self.stream, self.fifo_threshold);
     }
 
-    fn start(&self, dma: &mut DmaManager) {
-        dma.controller.set_sxcr_en(self.stream, StreamControl::Enable);
+    fn start(&mut self) {
+        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Enable);
     }
 
-    fn stop(&self, dma: &mut DmaManager) {
-        dma.controller.set_sxcr_en(self.stream, StreamControl::Disable);
+    fn stop(&mut self) {
+        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Disable);
     }
 }
 

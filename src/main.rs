@@ -3,6 +3,7 @@
 #![feature(plugin)]
 #![feature(collections)]
 #![plugin(clippy)]
+#![feature(collections)]
 
 #![allow(dead_code)]
 
@@ -20,6 +21,8 @@ extern crate bitflags;
 use stm32f7::{system_clock, sdram, lcd, board, embedded};
 use embedded::interfaces::gpio::{self, Gpio};
 use embed_stm::sdmmc::Sdmmc;
+use core::mem::transmute;
+use lcd::TextWriter;
 
 mod dma;
 mod sd;
@@ -129,22 +132,60 @@ fn main(hw: board::Hardware) -> ! {
     lcd.set_background_color(lcd::Color::from_hex(0));
 
     // clear screen
-    lcd.clear_screen();
+    lcd.layer_2().unwrap().clear();
+    lcd.layer_1().unwrap().clear();
 
     // TODO(ca) maybe draw some nice loading screen or something...
-    let mut tw = lcd.text_writer().unwrap();
-    tw.print_str("Welcome to the SD Card Party! ");
+    let mut lcd_layer_1 = lcd.layer_1().unwrap();
+    let mut tw = lcd_layer_1.text_writer().unwrap();
+    tw.print_str("Welcome to the SD Card Party!\n");
 
     // SD stuff
-    let mut sd_handle = sd::SdHandle::new(sdmmc, tw);
+    let mut sd_lcd_layer_1 = lcd.layer_1().unwrap();
+    let mut sd_tw = sd_lcd_layer_1.text_writer().unwrap();
+    let mut sd_handle = sd::SdHandle::new(sdmmc, &mut sd_tw);
     sd_handle.init(&mut gpio, rcc);
 
-    dma::DmaManager::init(dma_2);
+    let mut dma = dma::DmaManager::init(dma_2);
 
     // TODO(ca) add further initialization code here
 
+
     // turn led off - initialization finished
     led.set(false);
+
+    let source = [5, 100, 65535, -7];
+    let mut destination = [0, 0, 0, 0];
+
+    // Quick DMA test
+    let mut dma_transfer = dma::DmaTransfer {
+        dma: &mut dma,
+        stream: dma::Stream::S0,
+        channel: dma::Channel::C3,
+        priority: dma::PriorityLevel::High,
+        direction: dma::Direction::MemoryToMemory,
+        circular_mode: dma::CircularMode::Disable,
+        double_buffering_mode: dma::DoubleBufferingMode::Disable,
+        flow_controller: dma::FlowContoller::DMA,
+        peripheral_increment_offset_size: dma::PeripheralIncrementOffsetSize::UsePSize,
+        peripheral: dma::DmaTransferNode {
+            address: unsafe { transmute(&source) },
+            burst_mode: dma::BurstMode::SingleTransfer,
+            increment_mode: dma::IncrementMode::Increment,
+            transaction_width: dma::Width::Word,
+        },
+        memory: dma::DmaTransferNode {
+            address: unsafe { transmute(&mut destination) },
+            burst_mode: dma::BurstMode::SingleTransfer,
+            increment_mode: dma::IncrementMode::Increment,
+            transaction_width: dma::Width::Word,
+        },
+        transaction_count: 4,
+        direct_mode: dma::DirectMode::Disable,
+        fifo_threshold: dma::FifoThreshold::Full,
+    };
+
+    dma_transfer.startup();
 
     let mut last_led_toggle = system_clock::ticks();
     loop {
@@ -156,6 +197,11 @@ fn main(hw: board::Hardware) -> ! {
             let led_current = led.get();
             led.set(!led_current);
             last_led_toggle = ticks;
+        }
+
+        if !dma_transfer.is_active() {
+            let s = format!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), source, destination);
+            tw.print_str(&s);
         }
     }
 }

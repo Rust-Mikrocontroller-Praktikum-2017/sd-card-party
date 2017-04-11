@@ -5,7 +5,7 @@ use stm32f7::embedded::interfaces::gpio::Gpio;
 
 impl<'a> SdHandle<'a> {
     // New function because I was too lazy to rewrite the init function
-    pub fn new(sdmmc: &'static mut Sdmmc, /*dma: &'static Dma,*/ tw: lcd::Writer<'a>) -> Self {
+    pub fn new(sdmmc: &'static mut Sdmmc, /*dma: &'static Dma,*/ tw: &'a mut lcd::TextWriter) -> Self {
         SdHandle {
             registers: sdmmc,
             lock_type: LockType::Unlocked,

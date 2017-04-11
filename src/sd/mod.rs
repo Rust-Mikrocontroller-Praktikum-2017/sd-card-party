@@ -20,7 +20,7 @@ pub struct SdHandle<'a> {
     error_code: low_level::SdmmcErrorCode,
     //dma_handle: &'static Dma, // TODO: vermutlich wird mehr gebraucht... -> Rx und Tx Dma Handle, evtl. bei DMA schon implementiert
     sd_card: CardInfo,
-    tw: lcd::Writer<'a>,
+    tw: &'a mut lcd::TextWriter,
 }
 
 // represents Status

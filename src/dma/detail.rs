@@ -408,12 +408,12 @@ impl Dma {
         self._sxfcr(stream).update(|x| x.set_fth(ft as u8))
     }
 
-    fn _lisr(&mut self) -> volatile::ReadOnly<dma::Lisr> {
-        self.controller.lisr
+    fn _lisr(&mut self) -> &volatile::ReadOnly<dma::Lisr> {
+        &self.controller.lisr
     }
 
-    fn _hisr(&mut self) -> volatile::ReadOnly<dma::Hisr> {
-        self.controller.hisr
+    fn _hisr(&mut self) -> &volatile::ReadOnly<dma::Hisr> {
+        &self.controller.hisr
     }
 
     pub fn htif(&mut self, stream: Stream) -> InterruptState {
@@ -501,12 +501,12 @@ impl Dma {
         }
     }
 
-    fn _lifcr(&mut self) -> volatile::Volatile<dma::Lifcr> {
-        self.controller.lifcr
+    fn _lifcr(&mut self) -> &mut volatile::ReadWrite<dma::Lifcr> {
+        &mut self.controller.lifcr
     }
 
-    fn _hifcr(&mut self) -> volatile::Volatile<dma::Hifcr> {
-        self.controller.hifcr
+    fn _hifcr(&mut self) -> &mut volatile::ReadWrite<dma::Hifcr> {
+        &mut self.controller.hifcr
     }
 
     pub fn clear_htif(&mut self, stream: Stream) {
@@ -522,71 +522,55 @@ impl Dma {
         }
     }
 
-    pub fn clear_tcif(&mut self, stream: Stream) -> InterruptState {
-        unsafe {
-            transmute(bool_to_u8(
-                match stream {
-                    Stream::S0 => self._lifcr().read().tcif0(),
-                    Stream::S1 => self._lifcr().read().tcif1(),
-                    Stream::S2 => self._lifcr().read().tcif2(),
-                    Stream::S3 => self._lifcr().read().tcif3(),
-                    Stream::S4 => self._hifcr().read().tcif4(),
-                    Stream::S5 => self._hifcr().read().tcif5(),
-                    Stream::S6 => self._hifcr().read().tcif6(),
-                    Stream::S7 => self._hifcr().read().tcif7(),
-                }
-            ))
+    pub fn clear_tcif(&mut self, stream: Stream) {
+        match stream {
+            Stream::S0 => self._lifcr().update(|x| x.set_ctcif0(true)),
+            Stream::S1 => self._lifcr().update(|x| x.set_ctcif1(true)),
+            Stream::S2 => self._lifcr().update(|x| x.set_ctcif2(true)),
+            Stream::S3 => self._lifcr().update(|x| x.set_ctcif3(true)),
+            Stream::S4 => self._hifcr().update(|x| x.set_ctcif4(true)),
+            Stream::S5 => self._hifcr().update(|x| x.set_ctcif5(true)),
+            Stream::S6 => self._hifcr().update(|x| x.set_ctcif6(true)),
+            Stream::S7 => self._hifcr().update(|x| x.set_ctcif7(true)),
         }
     }
 
-    pub fn clear_teif(&mut self, stream: Stream) -> InterruptState {
-        unsafe {
-            transmute(bool_to_u8(
-                match stream {
-                    Stream::S0 => self._lifcr().read().teif0(),
-                    Stream::S1 => self._lifcr().read().teif1(),
-                    Stream::S2 => self._lifcr().read().teif2(),
-                    Stream::S3 => self._lifcr().read().teif3(),
-                    Stream::S4 => self._hifcr().read().teif4(),
-                    Stream::S5 => self._hifcr().read().teif5(),
-                    Stream::S6 => self._hifcr().read().teif6(),
-                    Stream::S7 => self._hifcr().read().teif7(),
-                }
-            ))
+    pub fn clear_teif(&mut self, stream: Stream) {
+        match stream {
+            Stream::S0 => self._lifcr().update(|x| x.set_cteif0(true)),
+            Stream::S1 => self._lifcr().update(|x| x.set_cteif1(true)),
+            Stream::S2 => self._lifcr().update(|x| x.set_cteif2(true)),
+            Stream::S3 => self._lifcr().update(|x| x.set_cteif3(true)),
+            Stream::S4 => self._hifcr().update(|x| x.set_cteif4(true)),
+            Stream::S5 => self._hifcr().update(|x| x.set_cteif5(true)),
+            Stream::S6 => self._hifcr().update(|x| x.set_cteif6(true)),
+            Stream::S7 => self._hifcr().update(|x| x.set_cteif7(true)),
         }
     }
 
-    pub fn clear_feif(&mut self, stream: Stream) -> InterruptState {
-        unsafe {
-            transmute(bool_to_u8(
-                match stream {
-                    Stream::S0 => self._lifcr().read().feif0(),
-                    Stream::S1 => self._lifcr().read().feif1(),
-                    Stream::S2 => self._lifcr().read().feif2(),
-                    Stream::S3 => self._lifcr().read().feif3(),
-                    Stream::S4 => self._hifcr().read().feif4(),
-                    Stream::S5 => self._hifcr().read().feif5(),
-                    Stream::S6 => self._hifcr().read().feif6(),
-                    Stream::S7 => self._hifcr().read().feif7(),
-                }
-            ))
+    pub fn clear_feif(&mut self, stream: Stream) {
+        match stream {
+            Stream::S0 => self._lifcr().update(|x| x.set_cfeif0(true)),
+            Stream::S1 => self._lifcr().update(|x| x.set_cfeif1(true)),
+            Stream::S2 => self._lifcr().update(|x| x.set_cfeif2(true)),
+            Stream::S3 => self._lifcr().update(|x| x.set_cfeif3(true)),
+            Stream::S4 => self._hifcr().update(|x| x.set_cfeif4(true)),
+            Stream::S5 => self._hifcr().update(|x| x.set_cfeif5(true)),
+            Stream::S6 => self._hifcr().update(|x| x.set_cfeif6(true)),
+            Stream::S7 => self._hifcr().update(|x| x.set_cfeif7(true)),
         }
     }
 
-    pub fn clear_dmeif(&mut self, stream: Stream) -> InterruptState {
-        unsafe {
-            transmute(bool_to_u8(
-                match stream {
-                    Stream::S0 => self._lifcr().read().dmeif0(),
-                    Stream::S1 => self._lifcr().read().dmeif1(),
-                    Stream::S2 => self._lifcr().read().dmeif2(),
-                    Stream::S3 => self._lifcr().read().dmeif3(),
-                    Stream::S4 => self._hifcr().read().dmeif4(),
-                    Stream::S5 => self._hifcr().read().dmeif5(),
-                    Stream::S6 => self._hifcr().read().dmeif6(),
-                    Stream::S7 => self._hifcr().read().dmeif7(),
-                }
-            ))
+    pub fn clear_dmeif(&mut self, stream: Stream) {
+        match stream {
+            Stream::S0 => self._lifcr().update(|x| x.set_cdmeif0(true)),
+            Stream::S1 => self._lifcr().update(|x| x.set_cdmeif1(true)),
+            Stream::S2 => self._lifcr().update(|x| x.set_cdmeif2(true)),
+            Stream::S3 => self._lifcr().update(|x| x.set_cdmeif3(true)),
+            Stream::S4 => self._hifcr().update(|x| x.set_cdmeif4(true)),
+            Stream::S5 => self._hifcr().update(|x| x.set_cdmeif5(true)),
+            Stream::S6 => self._hifcr().update(|x| x.set_cdmeif6(true)),
+            Stream::S7 => self._hifcr().update(|x| x.set_cdmeif7(true)),
         }
     }
 }
