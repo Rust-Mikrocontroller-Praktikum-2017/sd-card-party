@@ -223,6 +223,11 @@ pub struct DmaTransfer<'a> {
     pub transaction_count: u16,
     pub direct_mode: DirectMode,
     pub fifo_threshold: FifoThreshold,
+    pub interrupt_transfer_complete: InterruptControl,
+    pub interrupt_half_transfer: InterruptControl,
+    pub interrupt_transfer_error: InterruptControl,
+    pub interrupt_direct_mode_error: InterruptControl,
+    pub interrupt_fifo: InterruptControl,
 }
 
 impl<'a> DmaTransfer<'a> {
@@ -247,6 +252,11 @@ impl<'a> DmaTransfer<'a> {
                     DirectMode::Enable
                 },
             fifo_threshold: FifoThreshold::Full,
+            interrupt_transfer_complete: InterruptControl::Enable,
+            interrupt_half_transfer: InterruptControl::Disable,
+            interrupt_transfer_error: InterruptControl::Enable,
+            interrupt_direct_mode_error: InterruptControl::Enable,
+            interrupt_fifo: InterruptControl::Enable,
         }
     }
 
@@ -381,6 +391,12 @@ impl<'a> DmaTransfer<'a> {
         self.dma.controller.set_sxndtr(self.stream, self.transaction_count);
         self.dma.controller.set_sxfcr_dmdis(self.stream, self.direct_mode);
         self.dma.controller.set_sxfcr_fth(self.stream, self.fifo_threshold);
+
+        self.dma.controller.set_sxcr_tcie(self.stream, self.interrupt_transfer_complete);
+        self.dma.controller.set_sxcr_htie(self.stream, self.interrupt_half_transfer);
+        self.dma.controller.set_sxcr_teie(self.stream, self.interrupt_transfer_error);
+        self.dma.controller.set_sxcr_dmeie(self.stream, self.interrupt_direct_mode_error);
+        self.dma.controller.set_sxfcr_feie(self.stream, self.interrupt_fifo);
     }
 }
 
