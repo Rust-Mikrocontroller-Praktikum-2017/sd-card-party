@@ -65,7 +65,7 @@ impl SdHandle {
             cmd.set_cmdindex(55);
         });
 
-        self.get_response1(55, 0)
+        self.get_response1(55, 5000)
     }
 
     pub fn cmd_sd_send_op_cond(&mut self, capacity: CardCapacity) -> low_level::SdmmcErrorCode {
@@ -109,8 +109,9 @@ impl SdHandle {
 
     /// Checks the R1 response and waits for maximum timeout milliseconds to receive
     /// the response.
-    fn get_response1(&mut self, cmd_index: u8, timeout: usize) -> low_level::SdmmcErrorCode {
         print!("Reading Response 1 after sending a command: ");
+    fn get_response1(&mut self, cmd_index: u8, mut timeout: usize) -> low_level::SdmmcErrorCode {
+        timeout += ::system_clock::ticks();
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
                 // Command timeout
