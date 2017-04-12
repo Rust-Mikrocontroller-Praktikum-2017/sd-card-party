@@ -13,7 +13,6 @@ extern crate volatile;
 extern crate r0;
 // hardware register structs with accessor methods
 extern crate embedded_stm32f7 as embed_stm;
-#[macro_use]
 extern crate collections;
 
 #[macro_use]
@@ -21,9 +20,7 @@ extern crate bitflags;
 
 use stm32f7::{system_clock, sdram, lcd, board, embedded};
 use embedded::interfaces::gpio::{self, Gpio};
-use embed_stm::sdmmc::Sdmmc;
 use core::mem::transmute;
-use lcd::TextWriter;
 
 mod dma;
 mod sd;

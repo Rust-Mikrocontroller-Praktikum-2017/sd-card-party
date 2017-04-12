@@ -1,6 +1,6 @@
 use super::*;
 use embed_stm::rcc::Rcc;
-use stm32f7::{system_clock, lcd};
+use stm32f7::system_clock;
 use stm32f7::embedded::interfaces::gpio::Gpio;
 
 impl SdHandle {

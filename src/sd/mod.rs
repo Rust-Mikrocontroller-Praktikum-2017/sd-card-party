@@ -4,7 +4,6 @@ mod command;
 
 use embed_stm::sdmmc::Sdmmc;
 //use embed_stm::dma::Dma;
-use stm32f7::lcd;
 
 /// SD handle
 // represents SD_HandleTypeDef
