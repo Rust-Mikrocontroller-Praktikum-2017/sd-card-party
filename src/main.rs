@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 #![feature(plugin)]
-#![feature(collections)]
 #![plugin(clippy)]
 #![feature(alloc)]
 #![feature(collections)]
@@ -26,6 +25,8 @@ use embedded::interfaces::gpio::{self, Gpio};
 
 mod dma;
 mod sd;
+mod storage;
+mod block_device;
 
 // TODO(ca) We need some proper modular SDRAM management
 const SDRAM_START: usize = 0xC000_0000;
