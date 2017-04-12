@@ -171,19 +171,7 @@ impl SdHandle {
             // Configure SDMMC peripheral
             self.registers.clkcr.update(|clkcr| clkcr.set_widbus(mode as u8));
         } else {
-            // clear all static flags -> all flags in SDMMC_ICR except SDIOIT, CEATAEND and STBITERR
-            self.registers.icr.update(|icr| {
-                icr.set_dbckendc(true);
-                icr.set_dataendc(true);
-                icr.set_cmdsentc(true);
-                icr.set_cmdrendc(true);
-                icr.set_rxoverrc(true);
-                icr.set_txunderrc(true);
-                icr.set_dtimeoutc(true);
-                icr.set_ctimeoutc(true);
-                icr.set_dcrcfailc(true);
-                icr.set_ccrcfailc(true);
-            });
+            self.clear_all_static_status_flags();
             self.state = State::Ready;
             return Status::Error;
         }
@@ -199,5 +187,21 @@ impl SdHandle {
     /// disable 4-bit wide bus mode -> set 1-bit mode
     fn disable_wide_bus(&mut self) -> low_level::SdmmcErrorCode {
         unimplemented!();
+    }
+
+    fn clear_all_static_status_flags(&mut self) {
+        // clear all static flags -> all flags in SDMMC_ICR except SDIOIT, CEATAEND and STBITERR
+        self.registers.icr.update(|icr| {
+            icr.set_dbckendc(true);
+            icr.set_dataendc(true);
+            icr.set_cmdsentc(true);
+            icr.set_cmdrendc(true);
+            icr.set_rxoverrc(true);
+            icr.set_txunderrc(true);
+            icr.set_dtimeoutc(true);
+            icr.set_ctimeoutc(true);
+            icr.set_dcrcfailc(true);
+            icr.set_ccrcfailc(true);
+        });
     }
 }

@@ -72,16 +72,19 @@ impl SdHandle {
             if self.registers.sta.read().ctimeout() {
                 // Command timeout, version 2 not supported.
                 print!("Command timeout. ");
+                self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
                 return low_level::CMD_RSP_TIMEOUT;
             }
             if self.registers.sta.read().ccrcfail() {
                 // version 2 supported
                 print!("Command received, but CRC failed. ");
+                self.registers.icr.update(|icr| icr.set_ccrcfailc(true));
                 return low_level::NONE;
             }
             if self.registers.sta.read().cmdrend() {
                 // version 2 supported
                 print!("Command received correctly. ");
+                self.registers.icr.update(|icr| icr.set_cmdrendc(true));
                 return low_level::NONE;
             }
         }
