@@ -311,7 +311,7 @@ impl DmaTransfer {
     }
 
     pub fn is_ready(&self) -> bool {
-        self.dma.borrow().controller.sxcr_en(self.stream) == StreamControl::Disable
+        !self.is_active()
     }
 
     pub fn is_running(&self) -> bool {
@@ -338,12 +338,14 @@ impl DmaTransfer {
         self.is_running() && !self.is_finished() && !self.is_error()
     }
 
-    pub fn prepare(&mut self) -> Result<(), Error> {
+    pub fn start(&mut self) -> Result<(), Error> {
         let result = self.is_valid();
 
         if result.is_none() {
             if self.is_ready() {
                 self.configure();
+
+                self.dma.borrow_mut().controller.set_sxcr_en(self.stream, StreamControl::Enable);
 
                 Ok(())
             } else {
@@ -354,21 +356,21 @@ impl DmaTransfer {
         }
     }
 
-    pub fn start(&mut self) {
-        self.dma.borrow_mut().controller.set_sxcr_en(self.stream, StreamControl::Enable);
-    }
-
     pub fn stop(&mut self) {
         self.dma.borrow_mut().controller.set_sxcr_en(self.stream, StreamControl::Disable);
     }
 
-    pub fn wait(&self) {
-        while self.is_active() {}
+    pub fn wait(&self) -> bool {
+        while self.is_active() {};
+
+        !self.is_error()
     }
 
-    pub fn run_and_wait(&mut self) {
-        self.start();
-        self.wait()
+    pub fn start_and_wait(&mut self) -> Result<bool, Error> {
+        match self.start() {
+            Ok(_) => Ok(self.wait()),
+            Err(x) => Err(x),
+        }
     }
 
     fn configure(&mut self) {

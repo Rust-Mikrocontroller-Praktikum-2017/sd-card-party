@@ -27,6 +27,13 @@ use embedded::interfaces::gpio::{self, Gpio};
 mod dma;
 mod sd;
 
+// TODO(ca) We need some proper modular SDRAM management
+const SDRAM_START: usize = 0xC000_0000;
+const SDRAM_END: usize = 0xC080_0000;
+const SDRAM_LCD_SECTION_SIZE: usize = 0x0010_0000;
+const SDRAM_SDMMC_SECTION_SIZE: usize = 0x0000_0800;
+const SDRAM_FAT_SECTION_SIZE: usize = 0x0000_F800;
+
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {
     extern "C" {
@@ -145,6 +152,7 @@ fn main(hw: board::Hardware) -> ! {
     // SD stuff
     let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2);
     sd_handle.init(&mut gpio, rcc);
+    println!("");
 
     // TODO(ca) add further initialization code here
 
@@ -152,8 +160,19 @@ fn main(hw: board::Hardware) -> ! {
     // turn led off - initialization finished
     led.set(false);
 
-    let source = vec![5, 100, 65535, -7];
-    let mut destination = vec![0, 0, 0, 0];
+/*
+    const BUFFER_SIZE: usize = 0x0002_0000;
+    let source = SDRAM_START + SDRAM_LCD_SECTION_SIZE;
+    let destination = SDRAM_START + SDRAM_LCD_SECTION_SIZE + BUFFER_SIZE;
+
+    use core::ptr;
+
+    for i in 0..BUFFER_SIZE/4 {
+        unsafe {
+            ptr::write_volatile((source + i * 4) as *mut u32, i as u32);
+            ptr::write_volatile((destination + i * 4) as *mut u32, 0);
+        }
+    }
 
     // Quick DMA test
     let mut dma_transfer = dma::DmaTransfer::new(
@@ -162,26 +181,23 @@ fn main(hw: board::Hardware) -> ! {
         dma::Channel::C3,
         dma::Direction::MemoryToMemory,
         dma::DmaTransferNode {
-            address: source.as_ptr() as *mut u8,
+            address: source as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
         },
         dma::DmaTransferNode {
-            address: destination.as_mut_ptr() as *mut u8,
+            address: destination as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
         },
-        4
+        (BUFFER_SIZE / 4) as u16
     );
 
-    println!("");
-
-    dma_transfer.prepare().expect("Failed to prepare DMA transfer");
-    dma_transfer.start();
-
+    dma_transfer.start().expect("Failed to start DMA transfer");
     let mut only_once = true;
+*/
 
     let mut last_led_toggle = system_clock::ticks();
     loop {
@@ -194,12 +210,15 @@ fn main(hw: board::Hardware) -> ! {
             led.set(!led_current);
             last_led_toggle = ticks;
         }
-
+/*
         if only_once && !dma_transfer.is_active() {
-            println!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), source, destination);
+            let s = unsafe {ptr::read_volatile((source + BUFFER_SIZE - 4) as *mut u32)};
+            let d = unsafe {ptr::read_volatile((destination + BUFFER_SIZE - 4) as *mut u32)};
+            println!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), s, d);
             dma_transfer.stop();
             only_once = false;
         }
+*/
     }
 }
 
