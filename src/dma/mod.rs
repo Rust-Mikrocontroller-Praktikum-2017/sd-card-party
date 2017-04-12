@@ -327,11 +327,11 @@ impl DmaTransfer {
     }
 
     pub fn is_transfer_error(&self) -> bool {
-        self.dma.borrow().controller.teif(self.stream) == InterruptState::Raised        
+        self.dma.borrow().controller.teif(self.stream) == InterruptState::Raised
     }
 
     pub fn is_direct_mode_error(&self) -> bool {
-        self.dma.borrow().controller.dmeif(self.stream) == InterruptState::Raised        
+        self.dma.borrow().controller.dmeif(self.stream) == InterruptState::Raised
     }
 
     pub fn is_active(&self) -> bool {
