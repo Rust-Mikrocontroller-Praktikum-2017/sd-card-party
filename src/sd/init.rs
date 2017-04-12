@@ -289,7 +289,7 @@ impl SdHandle {
                         println!("Card is an SDSC card.");
                         self.sd_card.card_type = CardType::Sdsc;
                     } else {
-                        println!("Card is an SDHS or SDXC card.");
+                        println!("Card is an SDHC or SDXC card.");
                         self.sd_card.card_type = CardType::SdhcSdxc;
                     }
                 },
