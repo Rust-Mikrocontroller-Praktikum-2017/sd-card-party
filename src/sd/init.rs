@@ -2,20 +2,100 @@ use super::*;
 use embed_stm::rcc::Rcc;
 use stm32f7::embedded::interfaces::gpio::Gpio;
 
+
+const RX_BUFFER_SIZE: usize = 4096;
+const RX_PERIPHERAL_ADDRESS: *mut u8 = 0x00 as *mut u8;
+const RX_DMA_STREAM: dma::Stream = dma::Stream::S3;
+const RX_DMA_CHANNEL: dma::Channel = dma::Channel::C4;
+const TX_BUFFER_SIZE: usize = 4096;
+const TX_PERIPHERAL_ADDRESS: *mut u8 = 0x00 as *mut u8;
+const TX_DMA_STREAM: dma::Stream = dma::Stream::S6;
+const TX_DMA_CHANNEL: dma::Channel = dma::Channel::C4;
+
 impl SdHandle {
     // New function because I was too lazy to rewrite the init function
-    pub fn new(sdmmc: &'static mut Sdmmc, /*dma: &'static Dma,*/) -> Self {
+    pub fn new(sdmmc: &'static mut Sdmmc, dma: &dma::DmaManagerRc) -> Self {
+        assert_eq!(RX_BUFFER_SIZE % 4, 0);
+        assert_eq!(TX_BUFFER_SIZE % 4, 0);
+
+        let mut rx_buffer = vec![0; RX_BUFFER_SIZE];
+        let rx_buffer_ptr = rx_buffer.as_mut_ptr();
+        let rx_transaction_count = (RX_BUFFER_SIZE / 4) as u16;
+
+        let mut tx_buffer = vec![0; TX_BUFFER_SIZE];
+        let tx_buffer_ptr = tx_buffer.as_mut_ptr();
+        let tx_transaction_count = (TX_BUFFER_SIZE / 4) as u16;
+
         SdHandle {
             registers: sdmmc,
             lock_type: LockType::Unlocked,
-            //tx_buffer_ptr: 0,
-            tx_transfer_size: 0,
-            //rx_buffer_ptr: 0,
-            rx_transfer_size: 0,
+            rx_dma_buffer: rx_buffer,
+            rx_dma_transfer: dma::DmaTransfer {
+                dma: dma.clone(),
+                stream: RX_DMA_STREAM,
+                channel: RX_DMA_CHANNEL,
+                priority: dma::PriorityLevel::VeryHigh,
+                direction: dma::Direction::PeripheralToMemory,
+                circular_mode: dma::CircularMode::Disable,
+                double_buffering_mode: dma::DoubleBufferingMode::Disable,
+                flow_controller: dma::FlowContoller::Peripheral,
+                peripheral_increment_offset_size: dma::PeripheralIncrementOffsetSize::UsePSize,
+                peripheral: dma::DmaTransferNode {
+                    address: RX_PERIPHERAL_ADDRESS,
+                    burst_mode: dma::BurstMode::Incremental4,
+                    increment_mode: dma::IncrementMode::Fixed,
+                    transaction_width: dma::Width::Word,
+                },
+                memory: dma::DmaTransferNode {
+                    address: rx_buffer_ptr,
+                    burst_mode: dma::BurstMode::Incremental4,
+                    increment_mode: dma::IncrementMode::Increment,
+                    transaction_width: dma::Width::Word,
+                },
+                transaction_count: rx_transaction_count,
+                direct_mode: dma::DirectMode::Disable,
+                fifo_threshold: dma::FifoThreshold::Full,
+                interrupt_transfer_complete: dma::InterruptControl::Enable,
+                interrupt_half_transfer: dma::InterruptControl::Disable,
+                interrupt_transfer_error: dma::InterruptControl::Enable,
+                interrupt_direct_mode_error: dma::InterruptControl::Disable,
+                interrupt_fifo: dma::InterruptControl::Enable,
+            },
+            tx_dma_buffer: tx_buffer,
+            tx_dma_transfer: dma::DmaTransfer {
+                dma: dma.clone(),
+                stream: TX_DMA_STREAM,
+                channel: TX_DMA_CHANNEL,
+                priority: dma::PriorityLevel::VeryHigh,
+                direction: dma::Direction::MemoryToPeripheral,
+                circular_mode: dma::CircularMode::Disable,
+                double_buffering_mode: dma::DoubleBufferingMode::Disable,
+                flow_controller: dma::FlowContoller::Peripheral,
+                peripheral_increment_offset_size: dma::PeripheralIncrementOffsetSize::UsePSize,
+                peripheral: dma::DmaTransferNode {
+                    address: TX_PERIPHERAL_ADDRESS,
+                    burst_mode: dma::BurstMode::Incremental4,
+                    increment_mode: dma::IncrementMode::Fixed,
+                    transaction_width: dma::Width::Word,
+                },
+                memory: dma::DmaTransferNode {
+                    address: tx_buffer_ptr,
+                    burst_mode: dma::BurstMode::Incremental4,
+                    increment_mode: dma::IncrementMode::Increment,
+                    transaction_width: dma::Width::Word,
+                },
+                transaction_count: tx_transaction_count,
+                direct_mode: dma::DirectMode::Disable,
+                fifo_threshold: dma::FifoThreshold::Full,
+                interrupt_transfer_complete: dma::InterruptControl::Enable,
+                interrupt_half_transfer: dma::InterruptControl::Disable,
+                interrupt_transfer_error: dma::InterruptControl::Enable,
+                interrupt_direct_mode_error: dma::InterruptControl::Disable,
+                interrupt_fifo: dma::InterruptControl::Enable,
+            },
             context: Context::None,
             state: State::Reset,
             error_code: low_level::NONE,
-            //dma_handle: dma, // TODO: vermutlich wird mehr gebraucht... -> Rx und Tx Dma Handle, evtl. bei DMA schon implementiert
             sd_card: CardInfo::new(),
         }
     }

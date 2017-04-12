@@ -3,6 +3,7 @@
 #![feature(plugin)]
 #![feature(collections)]
 #![plugin(clippy)]
+#![feature(alloc)]
 #![feature(collections)]
 
 #![allow(dead_code)]
@@ -13,6 +14,8 @@ extern crate volatile;
 extern crate r0;
 // hardware register structs with accessor methods
 extern crate embedded_stm32f7 as embed_stm;
+extern crate alloc;
+#[macro_use]
 extern crate collections;
 
 #[macro_use]
@@ -137,10 +140,10 @@ fn main(hw: board::Hardware) -> ! {
     println!("Welcome to the SD Card Party!\n");
 
     // DMA2 init
-    let mut dma = dma::DmaManager::init_dma2(dma_2, rcc);
+    let dma_2 = dma::DmaManager::init_dma2(dma_2, rcc);
 
     // SD stuff
-    let mut sd_handle = sd::SdHandle::new(sdmmc);
+    let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2);
     sd_handle.init(&mut gpio, rcc);
 
     // TODO(ca) add further initialization code here
@@ -149,23 +152,23 @@ fn main(hw: board::Hardware) -> ! {
     // turn led off - initialization finished
     led.set(false);
 
-    let source = [5, 100, 65535, -7];
-    let mut destination = [0, 0, 0, 0];
+    let source = vec![5, 100, 65535, -7];
+    let mut destination = vec![0, 0, 0, 0];
 
     // Quick DMA test
     let mut dma_transfer = dma::DmaTransfer::new(
-        &mut dma,
+        dma_2.clone(),
         dma::Stream::S0,
         dma::Channel::C3,
         dma::Direction::MemoryToMemory,
         dma::DmaTransferNode {
-            address: &source as *const [i32; 4] as *mut u8,
+            address: source.as_ptr() as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
         },
         dma::DmaTransferNode {
-            address: &mut destination as *mut [i32; 4] as *mut u8,
+            address: destination.as_mut_ptr() as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,

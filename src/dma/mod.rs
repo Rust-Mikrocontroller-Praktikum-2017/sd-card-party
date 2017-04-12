@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
-use board::{dma, rcc};
+use board;
+use alloc::rc::Rc;
+use core::cell::RefCell;
 use dma::detail::Dma;
 
 mod detail;
@@ -202,14 +204,17 @@ impl FifoThreshold {
 
 #[derive(Debug)]
 pub struct DmaTransferNode {
-    pub increment_mode: IncrementMode,
-    pub burst_mode: BurstMode,
     pub address: *mut u8,
+    pub burst_mode: BurstMode,
+    pub increment_mode: IncrementMode,
     pub transaction_width: Width,
 }
 
-pub struct DmaTransfer<'a> {
-    pub dma: &'a mut DmaManager,
+pub type DmaManagerRc = Rc<DmaManagerRefCell>;
+type DmaManagerRefCell = RefCell<DmaManager>;
+
+pub struct DmaTransfer {
+    pub dma: DmaManagerRc,
     pub stream: Stream,
     pub channel: Channel,
     pub priority: PriorityLevel,
@@ -230,8 +235,8 @@ pub struct DmaTransfer<'a> {
     pub interrupt_fifo: InterruptControl,
 }
 
-impl<'a> DmaTransfer<'a> {
-    pub fn new(dma: &mut DmaManager, stream: Stream, channel: Channel, direction: Direction, peripheral: DmaTransferNode, memory: DmaTransferNode, transaction_count: u16) -> DmaTransfer {
+impl DmaTransfer {
+    pub fn new(dma: DmaManagerRc, stream: Stream, channel: Channel, direction: Direction, peripheral: DmaTransferNode, memory: DmaTransferNode, transaction_count: u16) -> DmaTransfer {
         let pwidth = peripheral.transaction_width.get_size();
         DmaTransfer {
             dma: dma,
@@ -306,15 +311,15 @@ impl<'a> DmaTransfer<'a> {
     }
 
     pub fn is_ready(&self) -> bool {
-        self.dma.controller.sxcr_en(self.stream) == StreamControl::Disable
+        self.dma.borrow().controller.sxcr_en(self.stream) == StreamControl::Disable
     }
 
     pub fn is_running(&self) -> bool {
-        self.dma.controller.sxcr_en(self.stream) == StreamControl::Enable
+        self.dma.borrow().controller.sxcr_en(self.stream) == StreamControl::Enable
     }
 
     pub fn is_finished(&self) -> bool {
-        self.dma.controller.tcif(self.stream) == InterruptState::Raised
+        self.dma.borrow().controller.tcif(self.stream) == InterruptState::Raised
     }
 
     pub fn is_error(&self) -> bool {
@@ -322,11 +327,11 @@ impl<'a> DmaTransfer<'a> {
     }
 
     pub fn is_transfer_error(&self) -> bool {
-        self.dma.controller.teif(self.stream) == InterruptState::Raised        
+        self.dma.borrow().controller.teif(self.stream) == InterruptState::Raised        
     }
 
     pub fn is_direct_mode_error(&self) -> bool {
-        self.dma.controller.dmeif(self.stream) == InterruptState::Raised        
+        self.dma.borrow().controller.dmeif(self.stream) == InterruptState::Raised        
     }
 
     pub fn is_active(&self) -> bool {
@@ -350,11 +355,11 @@ impl<'a> DmaTransfer<'a> {
     }
 
     pub fn start(&mut self) {
-        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Enable);
+        self.dma.borrow_mut().controller.set_sxcr_en(self.stream, StreamControl::Enable);
     }
 
     pub fn stop(&mut self) {
-        self.dma.controller.set_sxcr_en(self.stream, StreamControl::Disable);
+        self.dma.borrow_mut().controller.set_sxcr_en(self.stream, StreamControl::Disable);
     }
 
     pub fn wait(&self) {
@@ -367,36 +372,36 @@ impl<'a> DmaTransfer<'a> {
     }
 
     fn configure(&mut self) {
-        self.dma.controller.clear_htif(self.stream);
-        self.dma.controller.clear_tcif(self.stream);
-        self.dma.controller.clear_teif(self.stream);
-        self.dma.controller.clear_feif(self.stream);
-        self.dma.controller.clear_dmeif(self.stream);
+        self.dma.borrow_mut().controller.clear_htif(self.stream);
+        self.dma.borrow_mut().controller.clear_tcif(self.stream);
+        self.dma.borrow_mut().controller.clear_teif(self.stream);
+        self.dma.borrow_mut().controller.clear_feif(self.stream);
+        self.dma.borrow_mut().controller.clear_dmeif(self.stream);
 
-        self.dma.controller.set_sxcr_channel(self.stream, self.channel);
-        self.dma.controller.set_sxcr_pl(self.stream, self.priority);
-        self.dma.controller.set_sxcr_dir(self.stream, self.direction);
-        self.dma.controller.set_sxcr_circ(self.stream, self.circular_mode);
-        self.dma.controller.set_sxcr_dbm(self.stream, self.double_buffering_mode);
-        self.dma.controller.set_sxcr_pfctrl(self.stream, self.flow_controller);
-        self.dma.controller.set_sxcr_psize(self.stream, self.peripheral.transaction_width);
-        self.dma.controller.set_sxcr_pinc(self.stream, self.peripheral.increment_mode);
-        self.dma.controller.set_sxcr_pburst(self.stream, self.peripheral.burst_mode);
-        self.dma.controller.set_sxcr_pincos(self.stream, self.peripheral_increment_offset_size);
-        self.dma.controller.set_sxpar(self.stream, self.peripheral.address);
-        self.dma.controller.set_sxcr_msize(self.stream, self.memory.transaction_width);
-        self.dma.controller.set_sxcr_minc(self.stream, self.memory.increment_mode);
-        self.dma.controller.set_sxcr_mburst(self.stream, self.memory.burst_mode);
-        self.dma.controller.set_sxmxar(self.stream, MemoryIndex::M0, self.memory.address);
-        self.dma.controller.set_sxndtr(self.stream, self.transaction_count);
-        self.dma.controller.set_sxfcr_dmdis(self.stream, self.direct_mode);
-        self.dma.controller.set_sxfcr_fth(self.stream, self.fifo_threshold);
+        self.dma.borrow_mut().controller.set_sxcr_channel(self.stream, self.channel);
+        self.dma.borrow_mut().controller.set_sxcr_pl(self.stream, self.priority);
+        self.dma.borrow_mut().controller.set_sxcr_dir(self.stream, self.direction);
+        self.dma.borrow_mut().controller.set_sxcr_circ(self.stream, self.circular_mode);
+        self.dma.borrow_mut().controller.set_sxcr_dbm(self.stream, self.double_buffering_mode);
+        self.dma.borrow_mut().controller.set_sxcr_pfctrl(self.stream, self.flow_controller);
+        self.dma.borrow_mut().controller.set_sxcr_psize(self.stream, self.peripheral.transaction_width);
+        self.dma.borrow_mut().controller.set_sxcr_pinc(self.stream, self.peripheral.increment_mode);
+        self.dma.borrow_mut().controller.set_sxcr_pburst(self.stream, self.peripheral.burst_mode);
+        self.dma.borrow_mut().controller.set_sxcr_pincos(self.stream, self.peripheral_increment_offset_size);
+        self.dma.borrow_mut().controller.set_sxpar(self.stream, self.peripheral.address);
+        self.dma.borrow_mut().controller.set_sxcr_msize(self.stream, self.memory.transaction_width);
+        self.dma.borrow_mut().controller.set_sxcr_minc(self.stream, self.memory.increment_mode);
+        self.dma.borrow_mut().controller.set_sxcr_mburst(self.stream, self.memory.burst_mode);
+        self.dma.borrow_mut().controller.set_sxmxar(self.stream, MemoryIndex::M0, self.memory.address);
+        self.dma.borrow_mut().controller.set_sxndtr(self.stream, self.transaction_count);
+        self.dma.borrow_mut().controller.set_sxfcr_dmdis(self.stream, self.direct_mode);
+        self.dma.borrow_mut().controller.set_sxfcr_fth(self.stream, self.fifo_threshold);
 
-        self.dma.controller.set_sxcr_tcie(self.stream, self.interrupt_transfer_complete);
-        self.dma.controller.set_sxcr_htie(self.stream, self.interrupt_half_transfer);
-        self.dma.controller.set_sxcr_teie(self.stream, self.interrupt_transfer_error);
-        self.dma.controller.set_sxcr_dmeie(self.stream, self.interrupt_direct_mode_error);
-        self.dma.controller.set_sxfcr_feie(self.stream, self.interrupt_fifo);
+        self.dma.borrow_mut().controller.set_sxcr_tcie(self.stream, self.interrupt_transfer_complete);
+        self.dma.borrow_mut().controller.set_sxcr_htie(self.stream, self.interrupt_half_transfer);
+        self.dma.borrow_mut().controller.set_sxcr_teie(self.stream, self.interrupt_transfer_error);
+        self.dma.borrow_mut().controller.set_sxcr_dmeie(self.stream, self.interrupt_direct_mode_error);
+        self.dma.borrow_mut().controller.set_sxfcr_feie(self.stream, self.interrupt_fifo);
     }
 }
 
@@ -405,27 +410,35 @@ pub struct DmaManager {
 }
 
 impl DmaManager {
-    pub fn init_dma1(dma: &'static mut dma::Dma, rcc: &mut rcc::Rcc) -> DmaManager {
+    pub fn init_dma1(dma_1: &'static mut board::dma::Dma, rcc: &mut board::rcc::Rcc) -> DmaManagerRc {
        // enable DMA1 clock and wait until the clock is up
         rcc.ahb1enr.update(|r| r.set_dma1en(true));
         loop {
             if rcc.ahb1enr.read().dma1en() {break;};
         }
 
-        DmaManager {
-            controller: Dma::init(dma),
-        }
+        DmaManagerRc::new(
+            DmaManagerRefCell::new(
+                DmaManager {
+                    controller: Dma::init(dma_1),
+                }
+            )
+        )
     }
 
-    pub fn init_dma2(dma: &'static mut dma::Dma, rcc: &mut rcc::Rcc) -> DmaManager {
+    pub fn init_dma2(dma_2: &'static mut board::dma::Dma, rcc: &mut board::rcc::Rcc) -> DmaManagerRc {
        // enable DMA1 clock and wait until the clock is up
         rcc.ahb1enr.update(|r| r.set_dma2en(true));
         loop {
             if rcc.ahb1enr.read().dma2en() {break;};
         }
 
-        DmaManager {
-            controller: Dma::init(dma),
-        }
+        DmaManagerRc::new(
+            DmaManagerRefCell::new(
+                DmaManager {
+                    controller: Dma::init(dma_2),
+                }
+            )
+        )
     }
 }

@@ -2,22 +2,22 @@ pub mod init;
 mod low_level;
 mod command;
 
+use collections::vec::Vec;
+use dma;
 use embed_stm::sdmmc::Sdmmc;
-//use embed_stm::dma::Dma;
 
 /// SD handle
 // represents SD_HandleTypeDef
 pub struct SdHandle {
     registers: &'static mut Sdmmc,
     lock_type: LockType,
-    //tx_buffer_ptr: *const u8,
-    tx_transfer_size: u32,
-    //rx_buffer_ptr: *const u8,
-    rx_transfer_size: u32,
+    rx_dma_buffer: Vec<u8>,
+    rx_dma_transfer: dma::DmaTransfer,
+    tx_dma_buffer: Vec<u8>,
+    tx_dma_transfer: dma::DmaTransfer,
     context: Context,
     state: State,
     error_code: low_level::SdmmcErrorCode,
-    //dma_handle: &'static Dma, // TODO: vermutlich wird mehr gebraucht... -> Rx und Tx Dma Handle, evtl. bei DMA schon implementiert
     sd_card: CardInfo,
 }
 
