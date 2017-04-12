@@ -114,6 +114,12 @@ enum CardType {
     Secured = 3,
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum CardCapacity {
+    High = 0x4000_0000,
+    Standard = 0x0,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum CardVersion {
     V1x = 0b0,

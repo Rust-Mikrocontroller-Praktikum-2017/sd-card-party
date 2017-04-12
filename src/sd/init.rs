@@ -151,9 +151,33 @@ impl SdHandle {
         if self.cmd_send_if_cond() == low_level::NONE {
             // Card supports version 2.0
             print!("Version 2 ");
+            self.sd_card.version = CardVersion::V2x;
+
+            // Voltage trial
+            let voltage_result = self.voltage_trial(CardCapacity::High);
+            match voltage_result {
+                Ok(response) => {
+                    if response & CardCapacity::High as u32 == 0 {
+                        self.sd_card.card_type = CardType::Sdsc;
+                    } else {
+                        self.sd_card.card_type = CardType::SdhcSdxc;
+                    }
+                },
+                Err(v_err) => return v_err
+            }
+
+
         } else {
             // Card supports only version 1.0
             print!("Version 1 ");
+            self.sd_card.version = CardVersion::V1x;
+
+            // Voltage trial
+            let voltage_result = self.voltage_trial(CardCapacity::Standard);
+            match voltage_result {
+                Ok(response) => self.sd_card.card_type = CardType::Sdsc,
+                Err(v_err) => return v_err
+            }
         }
 
         low_level::NONE
@@ -231,5 +255,24 @@ impl SdHandle {
         // TODO: configure dma Rx and Rx parameters
         // TODO: enable DMA_Rx and DMA_Tx interrupts
         Status::Ok
+    }
+
+    fn voltage_trial(&mut self, capacity: CardCapacity) -> Result<u32, low_level::SdmmcErrorCode> {
+        // Parameters for voltage trial
+        let max_voltage_trial = 0xFFFF;
+        for i in 0..(max_voltage_trial - 1) {
+            // send CMD55 to indicate that the next command will be an ACMD
+            if self.cmd_app_cmd(0x0) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
+
+            // send ACMD41
+            if self.cmd_sd_send_op_cond(capacity) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
+            let response = self.registers.resp1.read().cardstatus1();
+            
+            // get operatin voltage
+            if (response >> 31) == 1 {
+                return Ok(response);
+            }
+        }
+        Err(low_level::UNSUPPORTED_FEATURE)
     }
 }

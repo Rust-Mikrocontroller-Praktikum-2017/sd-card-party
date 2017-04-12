@@ -48,6 +48,51 @@ impl SdHandle {
         self.get_response7()
     }
 
+    pub fn cmd_app_cmd(&mut self, rca: u32) -> low_level::SdmmcErrorCode {
+        // Argument:
+        // - [31:16]: RCA
+        // - [15:0]: stuff bits
+        self.registers.arg.update(|arg| arg.set_cmdarg(rca << 16));
+        
+        self.registers.cmd.update(|cmd| {
+            // ensure reset values in unused bits
+            cmd.set_sdiosuspend(false);
+            cmd.set_waitpend(false);
+            cmd.set_waitint(false);
+            // set card to send CMD8
+            cmd.set_waitresp(WaitResp::Short as u8);
+            cmd.set_cpsmen(true);
+            cmd.set_cmdindex(55);
+        });
+
+        self.get_response1(55, 0)
+    }
+
+    pub fn cmd_sd_send_op_cond(&mut self, capacity: CardCapacity) -> low_level::SdmmcErrorCode {
+        // Argument:
+        // - [31]: reserved
+        // - [30]: HCS = OCR[30]
+        // - [29]: reserved
+        // - [28]: XPC
+        // - [27:25]: reserved
+        // - [24]: S18R
+        // - [23:0]: V_dd Voltage Window = OCR[23:0]
+        self.registers.arg.update(|arg| arg.set_cmdarg(0x8010_0000 | capacity as u32));
+        
+        self.registers.cmd.update(|cmd| {
+            // ensure reset values in unused bits
+            cmd.set_sdiosuspend(false);
+            cmd.set_waitpend(false);
+            cmd.set_waitint(false);
+            // set card to send CMD8
+            cmd.set_waitresp(WaitResp::Short as u8);
+            cmd.set_cpsmen(true);
+            cmd.set_cmdindex(41);
+        });
+
+        self.get_response3()
+    }
+
     /// Checks whether any errors occurred while sending the previous command. The command must not expect
     /// any response.
     // TODO: Very similiar to get_response7, zusammenführen?
@@ -59,6 +104,64 @@ impl SdHandle {
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().cmdsent() {return low_level::NONE};
         }
+        low_level::TIMEOUT
+    }
+
+    /// Checks the R1 response and waits for maximum timeout milliseconds to receive
+    /// the response.
+    fn get_response1(&mut self, cmd_index: u8, timeout: usize) -> low_level::SdmmcErrorCode {
+        print!("Reading Response 1 after sending a command: ");
+        while ::system_clock::ticks() < timeout {
+            if self.registers.sta.read().ctimeout() {
+                // Command timeout
+                print!("Command timeout. ");
+                self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
+                return low_level::CMD_RSP_TIMEOUT;
+            }
+            if self.registers.sta.read().ccrcfail() {
+                // CRC failed
+                print!("Command received, but CRC failed. ");
+                self.registers.icr.update(|icr| icr.set_ccrcfailc(true));
+                return low_level::CMD_CRC_FAIL;
+            }
+            if self.registers.sta.read().cmdrend() {
+                // command received correctly
+                print!("Command received correctly. ");
+                
+                // check whether received response matches the command
+                if self.registers.respcmd.read().respcmd() != cmd_index {
+                    return low_level::CMD_CRC_FAIL;
+                }
+                self.clear_all_static_status_flags();
+
+                let response = self.registers.resp1.read().cardstatus1();
+                return check_ocr_error_bits(response);
+            }
+        }
+        print!("Software timeout. ");
+        low_level::TIMEOUT
+    }
+
+    /// Checks the R3 response and waits for maximum timeout milliseconds to receive
+    /// the response.
+    fn get_response3(&mut self) -> low_level::SdmmcErrorCode {
+        print!("Reading Response 3 after sending a command: ");
+        let timeout = ::system_clock::ticks() + 5000;
+        while ::system_clock::ticks() < timeout {
+            if self.registers.sta.read().ctimeout() {
+                // Command timeout
+                print!("Command timeout. ");
+                self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
+                return low_level::CMD_RSP_TIMEOUT;
+            }
+            if self.registers.sta.read().ccrcfail() || self.registers.sta.read().cmdrend() {
+                // CRC failed
+                print!("Command received. ");
+                self.clear_all_static_status_flags();
+                return low_level::NONE;
+            }
+        }
+        print!("Software timeout. ");
         low_level::TIMEOUT
     }
 
@@ -90,5 +193,49 @@ impl SdHandle {
         }
         print!("Software timeout. ");
         low_level::TIMEOUT
+    }
+}
+
+fn check_ocr_error_bits(resp1: u32) -> low_level::SdmmcErrorCode {
+    if (resp1 & 0xFDFFE008) == 0 {
+        low_level::NONE
+    } else if (resp1 & 0x8000_0000) == 0x8000_0000 {
+        low_level::ADDR_OUT_OF_RANGE
+    } else if (resp1 & 0x4000_0000) == 0x4000_0000 {
+        low_level::ADDR_MISALIGNED
+    } else if (resp1 & 0x2000_0000) == 0x2000_0000 {
+        low_level::BLOCK_LEN_ERR
+    } else if (resp1 & 0x1000_0000) == 0x1000_0000 {
+        low_level::ERASE_SEQ_ERR
+    } else if (resp1 & 0x0800_0000) == 0x0800_0000 {
+        low_level::BAD_ERASE_PARAM
+    } else if (resp1 & 0x0400_0000) == 0x0400_0000 {
+        low_level::WRITE_PROT_VIOLATION
+    } else if (resp1 & 0x0100_0000) == 0x0100_0000 {
+        low_level::LOCK_UNLOCK_FAILED
+    } else if (resp1 & 0x0080_0000) == 0x0080_0000 {
+        low_level::COM_CRC_FAILED
+    } else if (resp1 & 0x0040_0000) == 0x0040_0000 {
+        low_level::ILLEGAL_CMD
+    } else if (resp1 & 0x0020_0000) == 0x0020_0000 {
+        low_level::CARD_ECC_FAILED
+    } else if (resp1 & 0x0010_0000) == 0x0010_0000 {
+        low_level::CC_ERR
+    } else if (resp1 & 0x0004_0000) == 0x0004_0000 {
+        low_level::STREAM_READ_UNDERRUN
+    } else if (resp1 & 0x0002_0000) == 0x0002_0000 {
+        low_level::STREAM_WRITE_OVERRUN
+    } else if (resp1 & 0x0001_0000) == 0x0001_0000 {
+        low_level::CID_CSD_OVERWRITE
+    } else if (resp1 & 0x0000_8000) == 0x0000_8000 {
+        low_level::WP_ERASE_SKIP
+    } else if (resp1 & 0x0000_4000) == 0x0000_4000 {
+        low_level::CARD_ECC_DISABLED
+    } else if (resp1 & 0x0000_2000) == 0x0000_2000 {
+        low_level::ERASE_RESET
+    } else if (resp1 & 0x0000_0008) == 0x0000_0008 {
+        low_level::AKE_SEQ_ERR
+    } else {
+        low_level::GENERAL_UNKNOWN_ERR
     }
 }
