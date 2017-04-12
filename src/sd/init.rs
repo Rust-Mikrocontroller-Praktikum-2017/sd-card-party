@@ -351,7 +351,7 @@ impl SdHandle {
         let mut count = 0;
         while count < max_voltage_trial {
             count += 1;
-            // send CMD55 to indicate that the next command will be an ACMD
+            // send CMD55 with RCA 0x0 to indicate that the next command will be an ACMD
             println!("Send CMD55.");
             if self.cmd_app_cmd(0x0) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
 
@@ -360,7 +360,7 @@ impl SdHandle {
             if self.cmd_sd_send_op_cond(capacity) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
             let response = self.registers.resp1.read().cardstatus1();
             
-            // get operatin voltage
+            // get operating voltage
             if (response >> 31) == 1 {
                 return Ok(response);
             }

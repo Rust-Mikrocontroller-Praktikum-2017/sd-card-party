@@ -43,6 +43,7 @@ impl SdHandle {
         self.get_response7()
     }
 
+    /// Send CMD55 which indicates that the next command will be an application specific one (ACMD)
     pub fn cmd_app_cmd(&mut self, rca: u32) -> low_level::SdmmcErrorCode {
         // Argument:
         // - [31:16]: RCA
@@ -64,6 +65,7 @@ impl SdHandle {
         self.get_response1(cmd_index, 5000)
     }
 
+    /// send ACMD41
     pub fn cmd_sd_send_op_cond(&mut self, capacity: CardCapacity) -> low_level::SdmmcErrorCode {
         // Argument:
         // - [31]: reserved
