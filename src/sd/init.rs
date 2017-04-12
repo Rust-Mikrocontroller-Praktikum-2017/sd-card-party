@@ -278,7 +278,7 @@ impl SdHandle {
         // CMD8 is only supported by cards supporting V2.0
         if self.cmd_send_if_cond() == low_level::NONE {
             // Card supports version 2.0
-            print!("Version 2 ");
+            print!("Card supports Version 2. ");
             self.sd_card.version = CardVersion::V2x;
 
             // Voltage trial
@@ -299,7 +299,7 @@ impl SdHandle {
 
         } else {
             // Card supports only version 1.0
-            print!("Version 1 ");
+            print!("Card supports Version 1. ");
             self.sd_card.version = CardVersion::V1x;
 
             // Voltage trial
