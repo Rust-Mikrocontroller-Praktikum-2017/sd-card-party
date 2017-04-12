@@ -1,36 +1,19 @@
 use super::*;
 use embed_stm::rcc::Rcc;
 use stm32f7::embedded::interfaces::gpio::Gpio;
+use core::ptr;
 
-
-const RX_BUFFER_PTR_OFFSET: usize = 0;
-const RX_BUFFER_SIZE: usize = 512;
 const RX_PERIPHERAL_ADDRESS: *mut u8 = 0x00 as *mut u8;
 const RX_DMA_STREAM: dma::Stream = dma::Stream::S3;
 const RX_DMA_CHANNEL: dma::Channel = dma::Channel::C4;
 
-const TX_BUFFER_PTR_OFFSET: usize = RX_BUFFER_SIZE;
-const TX_BUFFER_SIZE: usize = 512;
 const TX_PERIPHERAL_ADDRESS: *mut u8 = 0x00 as *mut u8;
 const TX_DMA_STREAM: dma::Stream = dma::Stream::S6;
 const TX_DMA_CHANNEL: dma::Channel = dma::Channel::C4;
 
-const SDMMC_SDRAM_SIZE: usize = RX_BUFFER_SIZE + TX_BUFFER_SIZE;
-
 impl SdHandle {
     // New function because I was too lazy to rewrite the init function
-    pub fn new(sdmmc: &'static mut Sdmmc, dma: &dma::DmaManagerRc, sdram_addr: &mut usize) -> Self {
-        assert_eq!(RX_BUFFER_SIZE % 4, 0);
-        assert_eq!(TX_BUFFER_SIZE % 4, 0);
-
-        let rx_buffer_ptr = (*sdram_addr + RX_BUFFER_PTR_OFFSET) as *mut u8;
-        let rx_transaction_count = (RX_BUFFER_SIZE / 4) as u16;
-
-        let tx_buffer_ptr = (*sdram_addr + TX_BUFFER_PTR_OFFSET) as *mut u8;
-        let tx_transaction_count = (TX_BUFFER_SIZE / 4) as u16;
-
-        *sdram_addr += SDMMC_SDRAM_SIZE;
-
+    pub fn new(sdmmc: &'static mut Sdmmc, dma: &dma::DmaManagerRc) -> Self {
         SdHandle {
             registers: sdmmc,
             lock_type: LockType::Unlocked,
@@ -51,12 +34,12 @@ impl SdHandle {
                     transaction_width: dma::Width::Word,
                 },
                 memory: dma::DmaTransferNode {
-                    address: rx_buffer_ptr,
+                    address: ptr::null_mut(),
                     burst_mode: dma::BurstMode::Incremental4,
                     increment_mode: dma::IncrementMode::Increment,
                     transaction_width: dma::Width::Word,
                 },
-                transaction_count: rx_transaction_count,
+                transaction_count: 0,
                 direct_mode: dma::DirectMode::Disable,
                 fifo_threshold: dma::FifoThreshold::Full,
                 interrupt_transfer_complete: dma::InterruptControl::Enable,
@@ -82,12 +65,12 @@ impl SdHandle {
                     transaction_width: dma::Width::Word,
                 },
                 memory: dma::DmaTransferNode {
-                    address: tx_buffer_ptr,
+                    address: ptr::null_mut(),
                     burst_mode: dma::BurstMode::Incremental4,
                     increment_mode: dma::IncrementMode::Increment,
                     transaction_width: dma::Width::Word,
                 },
-                transaction_count: tx_transaction_count,
+                transaction_count: 0,
                 direct_mode: dma::DirectMode::Disable,
                 fifo_threshold: dma::FifoThreshold::Full,
                 interrupt_transfer_complete: dma::InterruptControl::Enable,

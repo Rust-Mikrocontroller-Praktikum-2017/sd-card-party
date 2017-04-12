@@ -31,8 +31,6 @@ mod block_device;
 const SDRAM_START: usize = 0xC000_0000;
 const SDRAM_END: usize = 0xC080_0000;
 const SDRAM_LCD_SECTION_SIZE: usize = 0x0010_0000;
-const SDRAM_SDMMC_SECTION_SIZE: usize = 0x0000_0800;
-const SDRAM_FAT_SECTION_SIZE: usize = 0x0000_F800;
 
 #[no_mangle]
 pub unsafe extern "C" fn reset() -> ! {
@@ -151,7 +149,7 @@ fn main(hw: board::Hardware) -> ! {
     let dma_2 = dma::DmaManager::init_dma2(dma_2, rcc);
 
     // SD stuff
-    let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2, &mut sdram_addr);
+    let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2);
     sd_handle.init(&mut gpio, rcc);
 
     // TODO(ca) add further initialization code here

@@ -58,7 +58,7 @@ pub enum BurstMode {
 }
 
 impl BurstMode {
-    fn get_size(&self) -> u32 {
+    pub fn get_size(&self) -> u32 {
         match *self {
             BurstMode::SingleTransfer => 1,
             _ => 1 << (*self as u32 + 1)
@@ -104,7 +104,7 @@ pub enum Width {
 }
 
 impl Width {
-    fn get_size(&self) -> u32 {
+    pub fn get_size(&self) -> u32 {
         1 << *self as u32
     }
 }
@@ -188,7 +188,7 @@ pub enum FifoThreshold {
 }
 
 impl FifoThreshold {
-    fn get_numerator(&self) -> u32 {
+    pub fn get_numerator(&self) -> u32 {
         match *self {
             FifoThreshold::Quarter => 1,
             FifoThreshold::Half => 2,
@@ -197,7 +197,7 @@ impl FifoThreshold {
         }
     }
 
-    fn get_denominator(&self) -> u32 {
+    pub fn get_denominator(&self) -> u32 {
         4
     }
 }
