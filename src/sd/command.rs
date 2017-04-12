@@ -5,7 +5,7 @@ impl SdHandle {
     pub fn cmd_go_idle_state(&mut self) -> low_level::SdmmcErrorCode {
         self.registers.arg.update(|arg| arg.set_cmdarg(0)); // only stuff bits in argument
         let mut sent = self.registers.sta.read();
-        println!("Cmdsent register: {:?}", sent);
+        println!("Cmdsent register: {:?}. ", sent);
         
         self.registers.cmd.update(|cmd| {
             // ensure reset values in unused bits

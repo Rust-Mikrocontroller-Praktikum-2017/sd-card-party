@@ -27,7 +27,7 @@ impl SdHandle {
     pub fn init(&mut self, gpio: &mut Gpio, rcc: &mut Rcc) -> Status {
         print!("Entering init() with state {}. ", self.state.to_str());
         if self.state == State::Reset {
-            print!("State is reset. ");
+            println!("State is reset. ");
             use embedded::interfaces::gpio::Port::*;
             use embedded::interfaces::gpio::Pin::*;
             use embedded::interfaces::gpio::Resistor;
@@ -38,13 +38,13 @@ impl SdHandle {
             loop {
                 if rcc.ahb1enr.read().gpiocen() {break;};
             }
-            print!("enabled GPIO C clock");
+            println!("Enabled GPIO C clock.");
             // SD detect port -> check if an SD Card is present
             let sd_not_present = gpio.to_input((PortC, Pin13),
                                                 Resistor::PullUp)
                                 .unwrap();
             if sd_not_present.get() {
-                print!(" Please insert SD card!");
+                println!(" Please insert SD card!");
                 return Status::Error;
             }
 
@@ -186,7 +186,7 @@ impl SdHandle {
         loop {
             if rcc.ahb1enr.read().gpioden() {break;};
         }
-        print!("Enabled peripheral clocks");
+        print!("Enabled peripheral clocks. ");
 
         // SDMMC1 Data bits
         let d0 = (PortC, Pin8);
@@ -220,7 +220,7 @@ impl SdHandle {
                                     OutputSpeed::High,
                                     Resistor::PullUp)
             .unwrap();
-        print!("Intialized pins for Command and data line");
+        print!("Intialized pins for Command and Data line and for peripheral clock. ");
 
         // TODO: set priority for SDMMC1 Interrupt and enable it, see HAL_NVIC_SetPriority and HAL_NVIC_EnableIRQ
         // TODO?: enum for interrupt numbers, or does it exist already?
