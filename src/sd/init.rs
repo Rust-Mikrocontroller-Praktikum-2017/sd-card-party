@@ -204,8 +204,55 @@ impl SdHandle {
     }
 
     // represents SD_InitCard()
-    fn init_card_low_level(&self) -> low_level::SdmmcErrorCode {
-        // TODO: implement!
+    fn init_card_low_level(&mut self) -> low_level::SdmmcErrorCode {
+        // check if power is on
+        if self.registers.power.read().pwrctrl() == 0 {return low_level::REQUEST_NOT_APPLICABLE;};
+
+        if self.sd_card.card_type != CardType::Secured {
+            // get card identification number data (CID)
+            // prompt all cards to send their CID
+            let cid_err = self.cmd_all_send_cid();
+            if cid_err != low_level::NONE {
+                return cid_err
+            } else {
+                self.sd_card.cid = self.get_all_response_registers();
+            }
+
+            // get RCA
+            // ask the card with CMD3 to publish a new Relative Address (RCA)
+            match self.cmd_send_relative_addr() {
+                Ok(rca) => self.sd_card.relative_card_address = rca,
+                Err(err) => return err,
+            }
+            
+            // get card specific data (CSD)
+            let rca = self.sd_card.relative_card_address as u32;
+            let csd_err = self.cmd_send_csd(rca);
+            if csd_err != low_level::NONE {
+                return csd_err;
+            } else {
+                self.sd_card.csd = self.get_all_response_registers();
+            }
+        }
+
+        // Get the Card Class, which is the CCC field in the CSD register
+        self.sd_card.class = (self.sd_card.csd[1] >> 20) as u16;
+        // TODO: fill CSD register struct (has to be declared first)
+
+        // select the card by sending CMD7
+        let rca = self.sd_card.relative_card_address as u32;
+        let select_err = self.cmd_select_deselect_card(rca);
+        if select_err != low_level::NONE { return select_err;}
+
+        // TODO: save clock info in self, and set parameters here accordingly
+        // Default Clock configuration
+        self.registers.clkcr.update(|clkcr| clkcr.set_negedge(false));
+        self.registers.clkcr.update(|clkcr| clkcr.set_bypass(false));
+        self.registers.clkcr.update(|clkcr| clkcr.set_pwrsav(false));
+        self.registers.clkcr.update(|clkcr| clkcr.set_widbus(BusMode::Default as u8));
+        self.registers.clkcr.update(|clkcr| clkcr.set_hwfc_en(false));
+        self.registers.clkcr.update(|clkcr| clkcr.set_clkdiv(0x76));
+
         low_level::NONE
     }
 

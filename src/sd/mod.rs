@@ -81,12 +81,14 @@ impl State {
 struct CardInfo {
     card_type: CardType,
     version: CardVersion,
-    // class: CardClass, -> einfach Resp2 >> 20
-    relative_card_address: u32,
+    class: u16, // einfach Resp2 >> 20
+    relative_card_address: u16,
     number_of_blocks: usize,
     block_size: usize,
     logical_number_of_blocks: usize,
     logical_block_size: usize,
+    cid: [u32; 4], // Card indentification number data
+    csd: [u32; 4], // Card specific data
 }
 
 impl CardInfo {
@@ -94,11 +96,14 @@ impl CardInfo {
         CardInfo {
             card_type: CardType::Sdsc,
             version: CardVersion::V1x,
+            class: 0,
             relative_card_address: 0x0,
             number_of_blocks: 0,
             block_size: 0,
             logical_number_of_blocks: 0,
             logical_block_size: 0,
+            cid: [0, 0, 0, 0],
+            csd: [0, 0, 0, 0],
         }
     }
 }
