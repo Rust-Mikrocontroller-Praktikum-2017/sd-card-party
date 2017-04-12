@@ -159,8 +159,6 @@ fn main(hw: board::Hardware) -> ! {
     // turn led off - initialization finished
     led.set(false);
 
-    let mut dma_test_state = dma_test_setup(&dma_2, &mut sdram_addr);
-
     let mut last_led_toggle = system_clock::ticks();
     loop {
         let ticks = system_clock::ticks();
@@ -172,8 +170,6 @@ fn main(hw: board::Hardware) -> ! {
             led.set(!led_current);
             last_led_toggle = ticks;
         }
-
-        dma_test_loop(&mut dma_test_state);
     }
 }
 
