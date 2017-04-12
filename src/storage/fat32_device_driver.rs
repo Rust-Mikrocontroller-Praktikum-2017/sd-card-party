@@ -115,6 +115,7 @@ impl<'a> Fat32DeviceDriver<'a> {
         self.read_cluster_data_region(self.root_directory_cluster_offset)
     }
 
+    /// will crash if (offset * 4) >= block_size
     // buffer
     fn read_in_fat(&self, offset: usize) -> usize {
         //better: buffer for read block_device with offset
@@ -124,7 +125,7 @@ impl<'a> Fat32DeviceDriver<'a> {
         (four_bytes_at_offset(&block, offset * 4) & 0x0FFFFFFF) as usize
     }
 
-    /// sdram
+    // sdram
     fn read_cluster_data_region(&self, cluster_entry_offset: usize) -> Vec<u8> {
         //- 2 because the first two cluster-entries in the FAT are reserved
         //and dont represent clusters in the data section
