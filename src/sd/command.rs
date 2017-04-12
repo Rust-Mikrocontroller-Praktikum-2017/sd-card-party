@@ -4,8 +4,6 @@ impl SdHandle {
     /// Send CMD0, which resets all cards into the idle state
     pub fn cmd_go_idle_state(&mut self) -> low_level::SdmmcErrorCode {
         self.registers.arg.update(|arg| arg.set_cmdarg(0)); // only stuff bits in argument
-        let mut sent = self.registers.sta.read();
-        println!("Cmdsent register: {:?}. ", sent);
         
         self.registers.cmd.update(|cmd| {
             // ensure reset values in unused bits
@@ -17,9 +15,6 @@ impl SdHandle {
             cmd.set_cpsmen(true);
             cmd.set_cmdindex(0);
         });
-        print!("Tried sending CMD0. ");
-        sent = self.registers.sta.read();
-        println!("Cmdsent register: {:?}", sent);
         
         self.get_cmd_error()
     }
@@ -109,8 +104,8 @@ impl SdHandle {
 
     /// Checks the R1 response and waits for maximum timeout milliseconds to receive
     /// the response.
-        print!("Reading Response 1 after sending a command: ");
     fn get_response1(&mut self, cmd_index: u8, mut timeout: usize) -> low_level::SdmmcErrorCode {
+        print!("Reading Response 1 after sending command {}: ", cmd_index);
         timeout += ::system_clock::ticks();
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
@@ -170,7 +165,7 @@ impl SdHandle {
     /// and SdmmcErrorCode::None is returned. If version 2.0 is not supported an error is returned.
     // represents SDMMC_GetCmdResp7
     fn get_response7(&mut self) -> low_level::SdmmcErrorCode {
-        print!("After sending CMD8: ");
+        print!("Reading response 7 after sending CMD8: ");
         let timeout = ::system_clock::ticks() + 5000;
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {

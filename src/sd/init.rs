@@ -240,8 +240,10 @@ impl SdHandle {
             match voltage_result {
                 Ok(response) => {
                     if response & CardCapacity::High as u32 == 0 {
+                        println!("Card is an SDSC card.");
                         self.sd_card.card_type = CardType::Sdsc;
                     } else {
+                        println!("Card is an SDHS or SDXC card.");
                         self.sd_card.card_type = CardType::SdhcSdxc;
                     }
                 },
@@ -257,7 +259,10 @@ impl SdHandle {
             // Voltage trial
             let voltage_result = self.voltage_trial(CardCapacity::Standard);
             match voltage_result {
-                Ok(_) => self.sd_card.card_type = CardType::Sdsc,
+                Ok(_) => {
+                    self.sd_card.card_type = CardType::Sdsc;
+                    println!("Card is an SDSC card.");
+                }
                 Err(v_err) => return v_err
             }
         }
@@ -341,14 +346,17 @@ impl SdHandle {
 
     fn voltage_trial(&mut self, capacity: CardCapacity) -> Result<u32, low_level::SdmmcErrorCode> {
         // Parameters for voltage trial
+        println!("Starting voltage trial for {:?} capacity card.", capacity);
         let max_voltage_trial = 0xFFFF;
         let mut count = 0;
         while count < max_voltage_trial {
             count += 1;
             // send CMD55 to indicate that the next command will be an ACMD
+            println!("Send CMD55.");
             if self.cmd_app_cmd(0x0) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
 
             // send ACMD41
+            println!("Send ACMD41");
             if self.cmd_sd_send_op_cond(capacity) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
             let response = self.registers.resp1.read().cardstatus1();
             
