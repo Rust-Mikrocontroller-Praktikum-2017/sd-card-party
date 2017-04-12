@@ -151,8 +151,18 @@ fn main(hw: board::Hardware) -> ! {
     let dma_2 = dma::DmaManager::init_dma2(dma_2, rcc);
 
     // SD stuff
+    // enable clock of GPIO PortC and wait the required 2 peripheral clock cycles
+    rcc.ahb1enr.update(|r| r.set_gpiocen(true));
+    loop {
+        if rcc.ahb1enr.read().gpiocen() {break;};
+    }
+    // SD detect port -> check if an SD Card is present
+    let sd_detect_pin = gpio.to_input((gpio::Port::PortC, gpio::Pin::Pin13),
+                                       gpio::Resistor::PullUp)
+                        .unwrap();
     let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2, &mut sdram_addr);
-    sd_handle.init(&mut gpio, rcc);
+    let mut sd_initialized = false;
+    let mut prompt_printed = false;
 
     // TODO(ca) add further initialization code here
 
@@ -160,6 +170,7 @@ fn main(hw: board::Hardware) -> ! {
     led.set(false);
 
     let mut last_led_toggle = system_clock::ticks();
+    let mut last_sd_check = system_clock::ticks();
     loop {
         let ticks = system_clock::ticks();
 
@@ -169,6 +180,27 @@ fn main(hw: board::Hardware) -> ! {
             let led_current = led.get();
             led.set(!led_current);
             last_led_toggle = ticks;
+        }
+
+        // test for an SD card every 500 ms
+        if ticks - last_sd_check >= 500 {
+            // pin is set if no SD card is present
+            if sd_detect_pin.get() { // no SD card present
+                if sd_initialized {
+                    // De-initialize the card
+                    sd_initialized = false;
+                }
+                if !prompt_printed { // user was not yet prompted to insert a card
+                    println!("Please insert SD card!");
+                    prompt_printed = true;
+                }
+            } else if !sd_detect_pin.get() && !sd_initialized { // SD card was inserted
+                println!("Initializing card.");
+                sd_handle.init(&mut gpio, rcc);
+                sd_initialized = true;
+                prompt_printed = false;
+            }
+            last_sd_check = ticks;
         }
     }
 }

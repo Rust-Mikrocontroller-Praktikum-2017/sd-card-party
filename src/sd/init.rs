@@ -110,9 +110,6 @@ impl SdHandle {
         //print!("Entering init() with state {}. ", self.state.to_str());
         if self.state == State::Reset {
             //println!("State is reset. ");
-            use embedded::interfaces::gpio::Port::*;
-            use embedded::interfaces::gpio::Pin::*;
-            use embedded::interfaces::gpio::Resistor;
 
             self.lock_type = LockType::Unlocked;
             // enable clock of GPIO PortC and wait the required 2 peripheral clock cycles
@@ -121,6 +118,7 @@ impl SdHandle {
                 if rcc.ahb1enr.read().gpiocen() {break;};
             }
             //println!("Enabled GPIO C clock.");
+            /*
             // SD detect port -> check if an SD Card is present
             let sd_not_present = gpio.to_input((PortC, Pin13),
                                                 Resistor::PullUp)
@@ -129,6 +127,7 @@ impl SdHandle {
                 println!(" Please insert SD card!");
                 return Status::Error;
             }
+            */
 
             self.init_pins(gpio, rcc);
         }
