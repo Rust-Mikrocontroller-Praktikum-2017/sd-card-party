@@ -67,7 +67,7 @@ impl SdHandle {
     pub fn init_card(&mut self) -> Status {
         print!("Entering init_card(). ");
         // Default Clock configuration
-        self.registers.clkcr.update(|clkcr| clkcr.set_negedge(true));
+        self.registers.clkcr.update(|clkcr| clkcr.set_negedge(false));
         self.registers.clkcr.update(|clkcr| clkcr.set_bypass(false));
         self.registers.clkcr.update(|clkcr| clkcr.set_pwrsav(false));
         self.registers.clkcr.update(|clkcr| clkcr.set_widbus(BusMode::Default as u8));

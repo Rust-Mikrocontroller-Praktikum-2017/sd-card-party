@@ -13,7 +13,7 @@ impl SdHandle {
             cmd.set_waitresp(WaitResp::No as u8);
             // set card to send CMD0
             cmd.set_cpsmen(true);
-            cmd.set_cmdindex(1);
+            cmd.set_cmdindex(0);
         });
         print!("Tried sending CMD0. ");
 
