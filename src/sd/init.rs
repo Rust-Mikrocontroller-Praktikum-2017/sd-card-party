@@ -107,9 +107,9 @@ impl SdHandle {
     /// handle and create the associated handle.
     /// Returns Status::Error if no SD card is present.
     pub fn init(&mut self, gpio: &mut Gpio, rcc: &mut Rcc) -> Status {
-        print!("Entering init() with state {}. ", self.state.to_str());
+        //print!("Entering init() with state {}. ", self.state.to_str());
         if self.state == State::Reset {
-            println!("State is reset. ");
+            //println!("State is reset. ");
             use embedded::interfaces::gpio::Port::*;
             use embedded::interfaces::gpio::Pin::*;
             use embedded::interfaces::gpio::Resistor;
@@ -120,7 +120,7 @@ impl SdHandle {
             loop {
                 if rcc.ahb1enr.read().gpiocen() {break;};
             }
-            println!("Enabled GPIO C clock.");
+            //println!("Enabled GPIO C clock.");
             // SD detect port -> check if an SD Card is present
             let sd_not_present = gpio.to_input((PortC, Pin13),
                                                 Resistor::PullUp)
@@ -147,7 +147,7 @@ impl SdHandle {
 
     /// Initialize SD Card
     pub fn init_card(&mut self) -> Status {
-        print!("Entering init_card(). ");
+        //print!("Entering init_card(). ");
         // Default Clock configuration
         self.registers.clkcr.update(|clkcr| clkcr.set_negedge(false));
         self.registers.clkcr.update(|clkcr| clkcr.set_bypass(false));
@@ -155,7 +155,7 @@ impl SdHandle {
         self.registers.clkcr.update(|clkcr| clkcr.set_widbus(BusMode::Default as u8));
         self.registers.clkcr.update(|clkcr| clkcr.set_hwfc_en(false));
         self.registers.clkcr.update(|clkcr| clkcr.set_clkdiv(0x76));
-        print!("Set clock default configuration. ");
+        //print!("Set clock default configuration. ");
 
         // Power up the SD card
         self.registers.clkcr.update(|clkcr| clkcr.set_clken(false)); // disable SDMMC clock
@@ -163,14 +163,14 @@ impl SdHandle {
         self.registers.power.update(|power| power.set_pwrctrl(PowerSupply::On as u8));
         ::wait(500);
         self.registers.clkcr.update(|clkcr| clkcr.set_clken(true)); // enable SDMMC clock
-        print!("Power up completed. ");
+        //print!("Power up completed. ");
         
         // Required power up waiting time before starting the SD initialization sequence
         ::wait(2);
 
         // Identify card operating voltage
         let errorstate = self.power_on();
-        print!("Completed power_on(). ");
+        //print!("Completed power_on(). ");
         if errorstate != low_level::NONE {
             self.state = State::Ready;
             self.error_code |= errorstate;
@@ -267,12 +267,12 @@ impl SdHandle {
     fn power_on(&mut self) -> low_level::SdmmcErrorCode {
         // send CMD0 to go to idle state
         let cmd0_error = self.cmd_go_idle_state();
-        print!("After sending CMD0: ");
+        /*print!("After sending CMD0: ");
         match cmd0_error {
             low_level::NONE => print!("No error. "),
             low_level::TIMEOUT => print!("Software timeout. "),
             _ => print!("Some error other than timeout. "),
-        };
+        };*/
         if cmd0_error != low_level::NONE {return cmd0_error;};
 
         // Send CMD8 to get operating conditions and distinguish between SD V1.0 and V2.0.
@@ -344,7 +344,7 @@ impl SdHandle {
         loop {
             if rcc.ahb1enr.read().gpioden() {break;};
         }
-        print!("Enabled peripheral clocks. ");
+        //print!("Enabled peripheral clocks. ");
 
         // SDMMC1 Data bits
         let d0 = (PortC, Pin8);
@@ -378,7 +378,7 @@ impl SdHandle {
                                     OutputSpeed::High,
                                     Resistor::PullUp)
             .unwrap();
-        print!("Intialized pins for Command and Data line and for peripheral clock. ");
+        //print!("Intialized pins for Command and Data line and for peripheral clock. ");
 
         // TODO: set priority for SDMMC1 Interrupt and enable it, see HAL_NVIC_SetPriority and HAL_NVIC_EnableIRQ
         // TODO?: enum for interrupt numbers, or does it exist already?
@@ -393,17 +393,17 @@ impl SdHandle {
 
     fn voltage_trial(&mut self, capacity: CardCapacity) -> Result<u32, low_level::SdmmcErrorCode> {
         // Parameters for voltage trial
-        println!("Starting voltage trial for {:?} capacity card.", capacity);
+        //println!("Starting voltage trial for {:?} capacity card.", capacity);
         let max_voltage_trial = 0xFFFF;
         let mut count = 0;
         while count < max_voltage_trial {
             count += 1;
             // send CMD55 with RCA 0x0 to indicate that the next command will be an ACMD
-            println!("Send CMD55.");
+            //println!("Send CMD55.");
             if self.cmd_app_cmd(0x0) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
 
             // send ACMD41
-            println!("Send ACMD41");
+            //println!("Send ACMD41");
             if self.cmd_sd_send_op_cond(capacity) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
             let response = self.registers.resp1.read().cardstatus1();
             

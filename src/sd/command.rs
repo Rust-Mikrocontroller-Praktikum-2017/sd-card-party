@@ -193,24 +193,24 @@ impl SdHandle {
     /// Checks the R1 response and waits for maximum timeout milliseconds to receive
     /// the response.
     fn get_response1(&mut self, cmd_index: u8, mut timeout: usize) -> low_level::SdmmcErrorCode {
-        print!("Reading Response 1 after sending command {}: ", cmd_index);
+        //print!("Reading Response 1 after sending command {}: ", cmd_index);
         timeout += ::system_clock::ticks();
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
                 // Command timeout
-                print!("Command timeout. ");
+                //print!("Command timeout. ");
                 self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
                 return low_level::CMD_RSP_TIMEOUT;
             }
             if self.registers.sta.read().ccrcfail() {
                 // CRC failed
-                print!("Command received, but CRC failed. ");
+                //print!("Command received, but CRC failed. ");
                 self.registers.icr.update(|icr| icr.set_ccrcfailc(true));
                 return low_level::CMD_CRC_FAIL;
             }
             if self.registers.sta.read().cmdrend() {
                 // command received correctly
-                print!("Command received correctly. ");
+                //print!("Command received correctly. ");
                 
                 // check whether received response matches the command
                 if !self.correct_resp_command_number(cmd_index) {
@@ -222,80 +222,80 @@ impl SdHandle {
                 return check_ocr_error_bits(response);
             }
         }
-        print!("Software timeout. ");
+        //print!("Software timeout. ");
         low_level::TIMEOUT
     }
 
     /// Checks the R2 response and waits for maximum timeout milliseconds to receive
     /// the response.
     fn get_response2(&mut self) -> low_level::SdmmcErrorCode {
-        print!("Reading Response 2 after sending a command: ");
+        //print!("Reading Response 2 after sending a command: ");
         let timeout = ::system_clock::ticks() + 5000;
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
                 // Command timeout
-                print!("Command timeout. ");
+                //print!("Command timeout. ");
                 self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
                 return low_level::CMD_RSP_TIMEOUT;
             }
             if self.registers.sta.read().ccrcfail() {
                 // CRC failed
-                print!("Command received, but CRC failed. ");
+                //print!("Command received, but CRC failed. ");
                 self.registers.icr.update(|icr| icr.set_ccrcfailc(true));
                 return low_level::CMD_CRC_FAIL;
             }
             if self.registers.sta.read().cmdrend() {
                 // command received correctly
-                print!("Command received correctly. ");
+                //print!("Command received correctly. ");
                 self.clear_all_static_status_flags();
                 return low_level::NONE;
             }
         }
-        print!("Software timeout. ");
+        //print!("Software timeout. ");
         low_level::TIMEOUT
     }
 
     /// Checks the R3 response and waits for maximum timeout milliseconds to receive
     /// the response.
     fn get_response3(&mut self) -> low_level::SdmmcErrorCode {
-        print!("Reading Response 3 after sending a command: ");
+        //print!("Reading Response 3 after sending a command: ");
         let timeout = ::system_clock::ticks() + 5000;
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
                 // Command timeout
-                print!("Command timeout. ");
+                //print!("Command timeout. ");
                 self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
                 return low_level::CMD_RSP_TIMEOUT;
             }
             if self.registers.sta.read().ccrcfail() || self.registers.sta.read().cmdrend() {
                 // CRC failed
-                print!("Command received. ");
+                //print!("Command received. ");
                 self.clear_all_static_status_flags();
                 return low_level::NONE;
             }
         }
-        print!("Software timeout. ");
+        //print!("Software timeout. ");
         low_level::TIMEOUT
     }
 
     /// Tests whether response 6 was received correctly
     fn get_response6(&mut self, cmd_index: u8) -> Result<u16, low_level::SdmmcErrorCode> {
-        print!("Reading response 6: ");
+        //print!("Reading response 6: ");
         let timeout = ::system_clock::ticks() + 5000;
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
-                print!("Command timeout. ");
+                //print!("Command timeout. ");
                 self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
                 return Err(low_level::CMD_RSP_TIMEOUT);
             }
             if self.registers.sta.read().ccrcfail() {
-                print!("Command received, but CRC failed. ");
+                //print!("Command received, but CRC failed. ");
                 self.registers.icr.update(|icr| icr.set_ccrcfailc(true));
                 return Err(low_level::CMD_CRC_FAIL);
             }
             if self.registers.sta.read().cmdrend() {
                 // version 2 supported
-                print!("Command received correctly. ");
+                //print!("Command received correctly. ");
 
                 // check whether received response matches the command
                 if !self.correct_resp_command_number(cmd_index) {
@@ -315,7 +315,7 @@ impl SdHandle {
                 return Ok((response >> 16) as u16);
             }
         }
-        print!("Software timeout. ");
+        //print!("Software timeout. ");
         Err(low_level::TIMEOUT)
     }
 
@@ -323,29 +323,29 @@ impl SdHandle {
     /// and SdmmcErrorCode::None is returned. If version 2.0 is not supported an error is returned.
     // represents SDMMC_GetCmdResp7
     fn get_response7(&mut self) -> low_level::SdmmcErrorCode {
-        print!("Reading response 7 after sending CMD8: ");
+        //print!("Reading response 7 after sending CMD8: ");
         let timeout = ::system_clock::ticks() + 5000;
         while ::system_clock::ticks() < timeout {
             if self.registers.sta.read().ctimeout() {
                 // Command timeout, version 2 not supported.
-                print!("Command timeout. ");
+                //print!("Command timeout. ");
                 self.registers.icr.update(|icr| icr.set_ctimeoutc(true));
                 return low_level::CMD_RSP_TIMEOUT;
             }
             if self.registers.sta.read().ccrcfail() {
                 // version 2 supported
-                print!("Command received, but CRC failed. ");
+                //print!("Command received, but CRC failed. ");
                 self.registers.icr.update(|icr| icr.set_ccrcfailc(true));
                 return low_level::NONE;
             }
             if self.registers.sta.read().cmdrend() {
                 // version 2 supported
-                print!("Command received correctly. ");
+                //print!("Command received correctly. ");
                 self.registers.icr.update(|icr| icr.set_cmdrendc(true));
                 return low_level::NONE;
             }
         }
-        print!("Software timeout. ");
+        //print!("Software timeout. ");
         low_level::TIMEOUT
     }
 
