@@ -365,6 +365,6 @@ impl SdHandle {
                 return Ok(response);
             }
         }
-        Err(low_level::UNSUPPORTED_FEATURE)
+        Err(low_level::INVALID_VOLTRANGE)
     }
 }
