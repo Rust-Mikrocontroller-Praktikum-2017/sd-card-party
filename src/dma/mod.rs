@@ -366,9 +366,14 @@ impl DmaTransfer {
         !self.is_error()
     }
 
-    pub fn start_and_wait(&mut self) -> Result<bool, Error> {
+    pub fn execute(&mut self) -> Result<bool, Error> {
         match self.start() {
-            Ok(_) => Ok(self.wait()),
+            Ok(_) => Ok({
+                let result = self.wait();
+                self.stop();
+
+                result
+            }),
             Err(x) => Err(x),
         }
     }
