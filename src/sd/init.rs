@@ -188,7 +188,6 @@ impl SdHandle {
         print!("Enabled peripheral clocks");
 
         // SDMMC1 Data bits
-        // TODO: Die C-Implementierung benutzt nur (PortC, Pin8-12)
         let d0 = (PortC, Pin8);
         let d1 = (PortC, Pin9);
         let d2 = (PortC, Pin10);
@@ -197,6 +196,9 @@ impl SdHandle {
         let d5 = (PortB, Pin9);
         let d6 = (PortC, Pin6);
         let d7 = (PortC, Pin7);
+
+        // clock pin
+        let ck = (PortC, Pin12);
 
         // Command line
         let cmd = (PortD, Pin2);
@@ -209,6 +211,7 @@ impl SdHandle {
                     d5,
                     d6,
                     d7,
+                    ck,
                     cmd];
         gpio.to_alternate_function_all(&pins,
                                     AlternateFunction::AF12,
