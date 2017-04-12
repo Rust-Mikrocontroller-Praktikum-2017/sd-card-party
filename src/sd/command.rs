@@ -49,6 +49,7 @@ impl SdHandle {
         // - [15:0]: stuff bits
         self.registers.arg.update(|arg| arg.set_cmdarg(rca << 16));
         
+        let cmd_index = 55;
         self.registers.cmd.update(|cmd| {
             // ensure reset values in unused bits
             cmd.set_sdiosuspend(false);
@@ -57,10 +58,10 @@ impl SdHandle {
             // set card to send CMD8
             cmd.set_waitresp(WaitResp::Short as u8);
             cmd.set_cpsmen(true);
-            cmd.set_cmdindex(55);
+            cmd.set_cmdindex(cmd_index);
         });
 
-        self.get_response1(55, 5000)
+        self.get_response1(cmd_index, 5000)
     }
 
     pub fn cmd_sd_send_op_cond(&mut self, capacity: CardCapacity) -> low_level::SdmmcErrorCode {
