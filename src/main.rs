@@ -165,7 +165,7 @@ fn main(hw: board::Hardware) -> ! {
     loop {
         let ticks = system_clock::ticks();
 
-        // every 0.5 seconds
+        // every 60 milliseconds
         if ticks - last_led_toggle >= 60 {
             // toggle the led
             let led_current = led.get();
