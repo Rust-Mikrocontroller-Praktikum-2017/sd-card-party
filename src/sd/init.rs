@@ -77,13 +77,14 @@ impl SdHandle {
 
         // Power up the SD card
         self.registers.clkcr.update(|clkcr| clkcr.set_clken(false)); // disable SDMMC clock
+        ::wait(500);
         self.registers.power.update(|power| power.set_pwrctrl(PowerSupply::On as u8));
+        ::wait(500);
         self.registers.clkcr.update(|clkcr| clkcr.set_clken(false)); // enable SDMMC clock
         print!("Power up completed. ");
         
         // Required power up waiting time before starting the SD initialization sequence
-        let ticks = system_clock::ticks();
-        while system_clock::ticks() - ticks < 2 {};
+        ::wait(2);
 
         // Identify card operating voltage
         let errorstate = self.power_on();

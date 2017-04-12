@@ -207,3 +207,8 @@ fn main(hw: board::Hardware) -> ! {
         }
     }
 }
+
+pub fn wait(time_ms: u32) {
+    let ticks = system_clock::ticks();
+    while system_clock::ticks() - ticks  < time_ms as usize {};
+}
