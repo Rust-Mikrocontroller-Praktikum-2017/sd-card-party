@@ -20,7 +20,6 @@ extern crate bitflags;
 
 use stm32f7::{system_clock, sdram, lcd, board, embedded};
 use embedded::interfaces::gpio::{self, Gpio};
-use core::mem::transmute;
 
 mod dma;
 mod sd;

@@ -1,6 +1,5 @@
 use super::*;
 use embed_stm::rcc::Rcc;
-use stm32f7::system_clock;
 use stm32f7::embedded::interfaces::gpio::Gpio;
 
 impl SdHandle {
@@ -175,7 +174,7 @@ impl SdHandle {
             // Voltage trial
             let voltage_result = self.voltage_trial(CardCapacity::Standard);
             match voltage_result {
-                Ok(response) => self.sd_card.card_type = CardType::Sdsc,
+                Ok(_) => self.sd_card.card_type = CardType::Sdsc,
                 Err(v_err) => return v_err
             }
         }
@@ -260,7 +259,9 @@ impl SdHandle {
     fn voltage_trial(&mut self, capacity: CardCapacity) -> Result<u32, low_level::SdmmcErrorCode> {
         // Parameters for voltage trial
         let max_voltage_trial = 0xFFFF;
-        for i in 0..(max_voltage_trial - 1) {
+        let mut count = 0;
+        while count < max_voltage_trial {
+            count += 1;
             // send CMD55 to indicate that the next command will be an ACMD
             if self.cmd_app_cmd(0x0) != low_level::NONE {return Err(low_level::UNSUPPORTED_FEATURE);};
 
