@@ -5,6 +5,8 @@ use dma::detail::Dma;
 
 mod detail;
 
+const FIFO_SIZE: u32 = 16;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Error {
     StreamNotReady,
@@ -224,8 +226,31 @@ pub struct DmaTransfer<'a> {
 }
 
 impl<'a> DmaTransfer<'a> {
+    pub fn new(dma: &mut DmaManager, stream: Stream, channel: Channel, direction: Direction, peripheral: DmaTransferNode, memory: DmaTransferNode, transaction_count: u16) -> DmaTransfer {
+        let pwidth = peripheral.transaction_width.get_size();
+        DmaTransfer {
+            dma: dma,
+            stream: stream,
+            channel: channel,
+            priority: PriorityLevel::Medium,
+            direction: direction,
+            circular_mode: CircularMode::Disable,
+            double_buffering_mode: DoubleBufferingMode::Disable,
+            flow_controller: FlowContoller::DMA,
+            peripheral_increment_offset_size: PeripheralIncrementOffsetSize::UsePSize,
+            peripheral: peripheral,
+            memory: memory,
+            transaction_count: transaction_count,
+            direct_mode: if transaction_count as u32 * pwidth >= FIFO_SIZE {
+                    DirectMode::Disable
+                } else {
+                    DirectMode::Enable
+                },
+            fifo_threshold: FifoThreshold::Full,
+        }
+    }
+
     pub fn is_valid(&self) -> Option<Error> {
-        const FIFO_SIZE: u32 = 16;
         let apply_circular_mode_limitations = self.circular_mode == CircularMode::Enable || self.double_buffering_mode != DoubleBufferingMode::Disable;
         let mwidth = self.memory.transaction_width.get_size();
         let pwidth = match self.peripheral_increment_offset_size {

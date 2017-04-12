@@ -154,32 +154,25 @@ fn main(hw: board::Hardware) -> ! {
     let mut destination = [0, 0, 0, 0];
 
     // Quick DMA test
-    let mut dma_transfer = dma::DmaTransfer {
-        dma: &mut dma,
-        stream: dma::Stream::S0,
-        channel: dma::Channel::C3,
-        priority: dma::PriorityLevel::High,
-        direction: dma::Direction::MemoryToMemory,
-        circular_mode: dma::CircularMode::Disable,
-        double_buffering_mode: dma::DoubleBufferingMode::Disable,
-        flow_controller: dma::FlowContoller::DMA,
-        peripheral_increment_offset_size: dma::PeripheralIncrementOffsetSize::UsePSize,
-        peripheral: dma::DmaTransferNode {
+    let mut dma_transfer = dma::DmaTransfer::new(
+        &mut dma,
+        dma::Stream::S0,
+        dma::Channel::C3,
+        dma::Direction::MemoryToMemory,
+        dma::DmaTransferNode {
             address: &source as *const [i32; 4] as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
         },
-        memory: dma::DmaTransferNode {
+        dma::DmaTransferNode {
             address: &mut destination as *mut [i32; 4] as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
         },
-        transaction_count: 4,
-        direct_mode: dma::DirectMode::Disable,
-        fifo_threshold: dma::FifoThreshold::Full,
-    };
+        4
+    );
 
     println!("");
 
