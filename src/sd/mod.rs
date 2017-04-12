@@ -2,7 +2,6 @@ pub mod init;
 mod low_level;
 mod command;
 
-use collections::vec::Vec;
 use dma;
 use embed_stm::sdmmc::Sdmmc;
 
@@ -11,9 +10,7 @@ use embed_stm::sdmmc::Sdmmc;
 pub struct SdHandle {
     registers: &'static mut Sdmmc,
     lock_type: LockType,
-    rx_dma_buffer: Vec<u8>,
     rx_dma_transfer: dma::DmaTransfer,
-    tx_dma_buffer: Vec<u8>,
     tx_dma_transfer: dma::DmaTransfer,
     context: Context,
     state: State,

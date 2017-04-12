@@ -3,33 +3,37 @@ use embed_stm::rcc::Rcc;
 use stm32f7::embedded::interfaces::gpio::Gpio;
 
 
-const RX_BUFFER_SIZE: usize = 4096;
+const RX_BUFFER_PTR_OFFSET: usize = 0;
+const RX_BUFFER_SIZE: usize = 512;
 const RX_PERIPHERAL_ADDRESS: *mut u8 = 0x00 as *mut u8;
 const RX_DMA_STREAM: dma::Stream = dma::Stream::S3;
 const RX_DMA_CHANNEL: dma::Channel = dma::Channel::C4;
-const TX_BUFFER_SIZE: usize = 4096;
+
+const TX_BUFFER_PTR_OFFSET: usize = RX_BUFFER_SIZE;
+const TX_BUFFER_SIZE: usize = 512;
 const TX_PERIPHERAL_ADDRESS: *mut u8 = 0x00 as *mut u8;
 const TX_DMA_STREAM: dma::Stream = dma::Stream::S6;
 const TX_DMA_CHANNEL: dma::Channel = dma::Channel::C4;
 
+const SDMMC_SDRAM_SIZE: usize = RX_BUFFER_SIZE + TX_BUFFER_SIZE;
+
 impl SdHandle {
     // New function because I was too lazy to rewrite the init function
-    pub fn new(sdmmc: &'static mut Sdmmc, dma: &dma::DmaManagerRc) -> Self {
+    pub fn new(sdmmc: &'static mut Sdmmc, dma: &dma::DmaManagerRc, sdram_addr: &mut usize) -> Self {
         assert_eq!(RX_BUFFER_SIZE % 4, 0);
         assert_eq!(TX_BUFFER_SIZE % 4, 0);
 
-        let mut rx_buffer = vec![0; RX_BUFFER_SIZE];
-        let rx_buffer_ptr = rx_buffer.as_mut_ptr();
+        let rx_buffer_ptr = (*sdram_addr + RX_BUFFER_PTR_OFFSET) as *mut u8;
         let rx_transaction_count = (RX_BUFFER_SIZE / 4) as u16;
 
-        let mut tx_buffer = vec![0; TX_BUFFER_SIZE];
-        let tx_buffer_ptr = tx_buffer.as_mut_ptr();
+        let tx_buffer_ptr = (*sdram_addr + TX_BUFFER_PTR_OFFSET) as *mut u8;
         let tx_transaction_count = (TX_BUFFER_SIZE / 4) as u16;
+
+        *sdram_addr += SDMMC_SDRAM_SIZE;
 
         SdHandle {
             registers: sdmmc,
             lock_type: LockType::Unlocked,
-            rx_dma_buffer: rx_buffer,
             rx_dma_transfer: dma::DmaTransfer {
                 dma: dma.clone(),
                 stream: RX_DMA_STREAM,
@@ -61,7 +65,6 @@ impl SdHandle {
                 interrupt_direct_mode_error: dma::InterruptControl::Disable,
                 interrupt_fifo: dma::InterruptControl::Enable,
             },
-            tx_dma_buffer: tx_buffer,
             tx_dma_transfer: dma::DmaTransfer {
                 dma: dma.clone(),
                 stream: TX_DMA_STREAM,

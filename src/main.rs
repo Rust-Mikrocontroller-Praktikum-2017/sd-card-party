@@ -14,7 +14,6 @@ extern crate r0;
 // hardware register structs with accessor methods
 extern crate embedded_stm32f7 as embed_stm;
 extern crate alloc;
-#[macro_use]
 extern crate collections;
 
 #[macro_use]
@@ -132,6 +131,7 @@ fn main(hw: board::Hardware) -> ! {
 
     // init sdram (needed for display buffer)
     sdram::init(rcc, fmc, &mut gpio);
+    let mut sdram_addr: usize = SDRAM_START + SDRAM_LCD_SECTION_SIZE;
 
     // lcd controller
     let mut lcd = lcd::init(ltdc, rcc, &mut gpio);
@@ -151,20 +151,44 @@ fn main(hw: board::Hardware) -> ! {
     let dma_2 = dma::DmaManager::init_dma2(dma_2, rcc);
 
     // SD stuff
-    let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2);
+    let mut sd_handle = sd::SdHandle::new(sdmmc, &dma_2, &mut sdram_addr);
     sd_handle.init(&mut gpio, rcc);
-    println!("");
 
     // TODO(ca) add further initialization code here
-
 
     // turn led off - initialization finished
     led.set(false);
 
-/*
-    const BUFFER_SIZE: usize = 0x0002_0000;
-    let source = SDRAM_START + SDRAM_LCD_SECTION_SIZE;
-    let destination = SDRAM_START + SDRAM_LCD_SECTION_SIZE + BUFFER_SIZE;
+    let mut dma_test_state = dma_test_setup(&dma_2, &mut sdram_addr);
+
+    let mut last_led_toggle = system_clock::ticks();
+    loop {
+        let ticks = system_clock::ticks();
+
+        // every 0.5 seconds
+        if ticks - last_led_toggle >= 60 {
+            // toggle the led
+            let led_current = led.get();
+            led.set(!led_current);
+            last_led_toggle = ticks;
+        }
+
+        dma_test_loop(&mut dma_test_state);
+    }
+}
+
+pub fn wait(time_ms: u32) {
+    let ticks = system_clock::ticks();
+    while system_clock::ticks() - ticks  < time_ms as usize {};
+}
+
+const BUFFER_SIZE: usize = 0x0002_0000;
+
+fn dma_test_setup(dma_2: &dma::DmaManagerRc, sdram_addr: &mut usize) -> (bool, dma::DmaTransfer, usize, usize) {
+    let source = *sdram_addr;
+    let destination = *sdram_addr + BUFFER_SIZE;
+
+    *sdram_addr += BUFFER_SIZE * 2;
 
     use core::ptr;
 
@@ -197,33 +221,18 @@ fn main(hw: board::Hardware) -> ! {
     );
 
     dma_transfer.start().expect("Failed to start DMA transfer");
-    let mut only_once = true;
-*/
 
-    let mut last_led_toggle = system_clock::ticks();
-    loop {
-        let ticks = system_clock::ticks();
-
-        // every 0.5 seconds
-        if ticks - last_led_toggle >= 60 {
-            // toggle the led
-            let led_current = led.get();
-            led.set(!led_current);
-            last_led_toggle = ticks;
-        }
-/*
-        if only_once && !dma_transfer.is_active() {
-            let s = unsafe {ptr::read_volatile((source + BUFFER_SIZE - 4) as *mut u32)};
-            let d = unsafe {ptr::read_volatile((destination + BUFFER_SIZE - 4) as *mut u32)};
-            println!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", dma_transfer.is_error(), s, d);
-            dma_transfer.stop();
-            only_once = false;
-        }
-*/
-    }
+    (true, dma_transfer, source, destination)
 }
 
-pub fn wait(time_ms: u32) {
-    let ticks = system_clock::ticks();
-    while system_clock::ticks() - ticks  < time_ms as usize {};
+fn dma_test_loop(x: &mut (bool, dma::DmaTransfer, usize, usize) ) {
+    use core::ptr;
+
+    if x.0 && !x.1.is_active() {
+        let s = unsafe {ptr::read_volatile((x.2 + BUFFER_SIZE - 4) as *mut u32)};
+        let d = unsafe {ptr::read_volatile((x.3 + BUFFER_SIZE - 4) as *mut u32)};
+        println!("DMA finished: is_error: {}, source: {:?}, destination: {:?}", x.1.is_error(), s, d);
+        x.1.stop();
+        x.0 = false;
+    }
 }
