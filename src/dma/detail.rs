@@ -72,7 +72,7 @@ impl Dma {
         }
     }
 
-    fn _sxcr(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0cr> {
+    fn _sxcr_mut(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0cr> {
         match stream {
             Stream::S0 => &mut self.controller.s0cr,
             Stream::S1 => &mut self.controller.s1cr,
@@ -85,31 +85,44 @@ impl Dma {
         }
     }
 
-    pub fn sxcr_channel(&mut self, stream: Stream) -> Channel {
+    fn _sxcr(&self, stream: Stream) -> &volatile::ReadWrite<dma::S0cr> {
+        match stream {
+            Stream::S0 => &self.controller.s0cr,
+            Stream::S1 => &self.controller.s1cr,
+            Stream::S2 => &self.controller.s2cr,
+            Stream::S3 => &self.controller.s3cr,
+            Stream::S4 => &self.controller.s4cr,
+            Stream::S5 => &self.controller.s5cr,
+            Stream::S6 => &self.controller.s6cr,
+            Stream::S7 => &self.controller.s7cr,
+        }
+    }
+
+    pub fn sxcr_channel(&self, stream: Stream) -> Channel {
         unsafe {
             transmute(self._sxcr(stream).read().chsel())
         }
     }
 
-    pub fn sxcr_mburst(&mut self, stream: Stream) -> BurstMode {
+    pub fn sxcr_mburst(&self, stream: Stream) -> BurstMode {
         unsafe {
             transmute(self._sxcr(stream).read().mburst())
         }
     }
 
-    pub fn sxcr_pburst(&mut self, stream: Stream) -> BurstMode {
+    pub fn sxcr_pburst(&self, stream: Stream) -> BurstMode {
         unsafe {
             transmute(self._sxcr(stream).read().pburst())
         }
     }
 
-    pub fn sxcr_ct(&mut self, stream: Stream) -> MemoryIndex {
+    pub fn sxcr_ct(&self, stream: Stream) -> MemoryIndex {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().ct()))
         }
     }
 
-    pub fn sxcr_dbm(&mut self, stream: Stream) -> DoubleBufferingMode {
+    pub fn sxcr_dbm(&self, stream: Stream) -> DoubleBufferingMode {
         if self._sxcr(stream).read().dbm() {
             DoubleBufferingMode::UseSecondBuffer(self.sxmxar(stream, MemoryIndex::M1))
         } else {
@@ -117,104 +130,104 @@ impl Dma {
         }
     }
 
-    pub fn sxcr_pl(&mut self, stream: Stream) -> PriorityLevel {
+    pub fn sxcr_pl(&self, stream: Stream) -> PriorityLevel {
         unsafe {
             transmute(self._sxcr(stream).read().pl())
         }
     }
 
-    pub fn sxcr_pincos(&mut self, stream: Stream) -> PeripheralIncrementOffsetSize {
+    pub fn sxcr_pincos(&self, stream: Stream) -> PeripheralIncrementOffsetSize {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().pincos()))
         }
     }
 
-    pub fn sxcr_msize(&mut self, stream: Stream) -> Width {
+    pub fn sxcr_msize(&self, stream: Stream) -> Width {
         unsafe {
             transmute(self._sxcr(stream).read().msize())
         }
     }
 
-    pub fn sxcr_psize(&mut self, stream: Stream) -> Width {
+    pub fn sxcr_psize(&self, stream: Stream) -> Width {
         unsafe {
             transmute(self._sxcr(stream).read().psize())
         }
     }
 
-    pub fn sxcr_minc(&mut self, stream: Stream) -> IncrementMode {
+    pub fn sxcr_minc(&self, stream: Stream) -> IncrementMode {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().minc()))
         }
     }
 
-    pub fn sxcr_pinc(&mut self, stream: Stream) -> IncrementMode {
+    pub fn sxcr_pinc(&self, stream: Stream) -> IncrementMode {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().pinc()))
         }
     }
 
-    pub fn sxcr_circ(&mut self, stream: Stream) -> CircularMode {
+    pub fn sxcr_circ(&self, stream: Stream) -> CircularMode {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().circ()))
         }
     }
 
-    pub fn sxcr_dir(&mut self, stream: Stream) -> Direction {
+    pub fn sxcr_dir(&self, stream: Stream) -> Direction {
         unsafe {
             transmute(self._sxcr(stream).read().dir())
         }
     }
 
-    pub fn sxcr_pfctrl(&mut self, stream: Stream) -> FlowContoller {
+    pub fn sxcr_pfctrl(&self, stream: Stream) -> FlowContoller {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().pfctrl()))
         }
     }
 
-    pub fn sxcr_tcie(&mut self, stream: Stream) -> InterruptControl {
+    pub fn sxcr_tcie(&self, stream: Stream) -> InterruptControl {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().tcie()))
         }
     }
 
-    pub fn sxcr_htie(&mut self, stream: Stream) -> InterruptControl {
+    pub fn sxcr_htie(&self, stream: Stream) -> InterruptControl {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().htie()))
         }
     }
 
-    pub fn sxcr_teie(&mut self, stream: Stream) -> InterruptControl {
+    pub fn sxcr_teie(&self, stream: Stream) -> InterruptControl {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().teie()))
         }
     }
 
-    pub fn sxcr_dmeie(&mut self, stream: Stream) -> InterruptControl {
+    pub fn sxcr_dmeie(&self, stream: Stream) -> InterruptControl {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().dmeie()))
         }
     }
 
-    pub fn sxcr_en(&mut self, stream: Stream) -> StreamControl {
+    pub fn sxcr_en(&self, stream: Stream) -> StreamControl {
         unsafe {
             transmute(bool_to_u8(self._sxcr(stream).read().en()))
         }
     }
 
     pub fn set_sxcr_channel(&mut self, stream: Stream, channel: Channel) {
-        self._sxcr(stream).update(|x| x.set_chsel(channel as u8))
+        self._sxcr_mut(stream).update(|x| x.set_chsel(channel as u8))
     }
 
     pub fn set_sxcr_mburst(&mut self, stream: Stream, burst_mode: BurstMode) {
-        self._sxcr(stream).update(|x| x.set_mburst(burst_mode as u8))
+        self._sxcr_mut(stream).update(|x| x.set_mburst(burst_mode as u8))
     }
 
     pub fn set_sxcr_pburst(&mut self, stream: Stream, burst_mode: BurstMode) {
-        self._sxcr(stream).update(|x| x.set_pburst(burst_mode as u8))
+        self._sxcr_mut(stream).update(|x| x.set_pburst(burst_mode as u8))
     }
 
     pub fn set_sxcr_ct(&mut self, stream: Stream, target: MemoryIndex) {
-        self._sxcr(stream).update(|x| x.set_ct(target as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_ct(target as u8 != 0))
     }
 
     pub fn set_sxcr_dbm(&mut self, stream: Stream, mode: DoubleBufferingMode) {
@@ -225,66 +238,79 @@ impl Dma {
                     true
                 },
             };
-        self._sxcr(stream).update(|x| x.set_dbm(dbm_value))
+        self._sxcr_mut(stream).update(|x| x.set_dbm(dbm_value))
     }
 
     pub fn set_sxcr_pl(&mut self, stream: Stream, priority: PriorityLevel) {
-        self._sxcr(stream).update(|x| x.set_pl(priority as u8))
+        self._sxcr_mut(stream).update(|x| x.set_pl(priority as u8))
     }
 
     pub fn set_sxcr_pincos(&mut self, stream: Stream, pincos: PeripheralIncrementOffsetSize) {
-        self._sxcr(stream).update(|x| x.set_pincos(pincos as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_pincos(pincos as u8 != 0))
     }
 
     pub fn set_sxcr_msize(&mut self, stream: Stream, msize: Width) {
-        self._sxcr(stream).update(|x| x.set_msize(msize as u8))
+        self._sxcr_mut(stream).update(|x| x.set_msize(msize as u8))
     }
 
     pub fn set_sxcr_psize(&mut self, stream: Stream, msize: Width) {
-        self._sxcr(stream).update(|x| x.set_psize(msize as u8))
+        self._sxcr_mut(stream).update(|x| x.set_psize(msize as u8))
     }
 
     pub fn set_sxcr_minc(&mut self, stream: Stream, mode: IncrementMode) {
-        self._sxcr(stream).update(|x| x.set_minc(mode as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_minc(mode as u8 != 0))
     }
 
     pub fn set_sxcr_pinc(&mut self, stream: Stream, mode: IncrementMode) {
-        self._sxcr(stream).update(|x| x.set_pinc(mode as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_pinc(mode as u8 != 0))
     }
 
     pub fn set_sxcr_circ(&mut self, stream: Stream, mode: CircularMode) {
-        self._sxcr(stream).update(|x| x.set_circ(mode as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_circ(mode as u8 != 0))
     }
 
     pub fn set_sxcr_dir(&mut self, stream: Stream, direction: Direction) {
-        self._sxcr(stream).update(|x| x.set_dir(direction as u8))
+        self._sxcr_mut(stream).update(|x| x.set_dir(direction as u8))
     }
 
     pub fn set_sxcr_pfctrl(&mut self, stream: Stream, fc: FlowContoller) {
-        self._sxcr(stream).update(|x| x.set_pfctrl(fc as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_pfctrl(fc as u8 != 0))
     }
 
     pub fn set_sxcr_tcie(&mut self, stream: Stream, ic: InterruptControl) {
-        self._sxcr(stream).update(|x| x.set_tcie(ic as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_tcie(ic as u8 != 0))
     }
 
     pub fn set_sxcr_htie(&mut self, stream: Stream, ic: InterruptControl) {
-        self._sxcr(stream).update(|x| x.set_htie(ic as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_htie(ic as u8 != 0))
     }
 
     pub fn set_sxcr_teie(&mut self, stream: Stream, ic: InterruptControl) {
-        self._sxcr(stream).update(|x| x.set_teie(ic as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_teie(ic as u8 != 0))
     }
 
     pub fn set_sxcr_dmeie(&mut self, stream: Stream, ic: InterruptControl) {
-        self._sxcr(stream).update(|x| x.set_dmeie(ic as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_dmeie(ic as u8 != 0))
     }
 
     pub fn set_sxcr_en(&mut self, stream: Stream, sc: StreamControl) {
-        self._sxcr(stream).update(|x| x.set_en(sc as u8 != 0))
+        self._sxcr_mut(stream).update(|x| x.set_en(sc as u8 != 0))
     }
 
-    fn _sxndtr(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0ndtr> {
+     pub fn sxndtr(&self, stream: Stream) -> u16 {
+        match stream {
+            Stream::S0 => &self.controller.s0ndtr,
+            Stream::S1 => &self.controller.s1ndtr,
+            Stream::S2 => &self.controller.s2ndtr,
+            Stream::S3 => &self.controller.s3ndtr,
+            Stream::S4 => &self.controller.s4ndtr,
+            Stream::S5 => &self.controller.s5ndtr,
+            Stream::S6 => &self.controller.s6ndtr,
+            Stream::S7 => &self.controller.s7ndtr,
+        }.read().ndt()
+    }
+
+    pub fn set_sxndtr(&mut self, stream: Stream, count: u16) {
         match stream {
             Stream::S0 => &mut self.controller.s0ndtr,
             Stream::S1 => &mut self.controller.s1ndtr,
@@ -294,18 +320,23 @@ impl Dma {
             Stream::S5 => &mut self.controller.s5ndtr,
             Stream::S6 => &mut self.controller.s6ndtr,
             Stream::S7 => &mut self.controller.s7ndtr,
-        }
+        }.update(|x| x.set_ndt(count))
     }
 
-    pub fn sxndtr(&mut self, stream: Stream) -> u16 {
-        self._sxndtr(stream).read().ndt()
+    pub fn sxpar(&self, stream: Stream) -> *mut u8 {
+        match stream {
+            Stream::S0 => &self.controller.s0par,
+            Stream::S1 => &self.controller.s1par,
+            Stream::S2 => &self.controller.s2par,
+            Stream::S3 => &self.controller.s3par,
+            Stream::S4 => &self.controller.s4par,
+            Stream::S5 => &self.controller.s5par,
+            Stream::S6 => &self.controller.s6par,
+            Stream::S7 => &self.controller.s7par,
+        }.read().pa() as *mut u8
     }
 
-    pub fn set_sxndtr(&mut self, stream: Stream, count: u16) {
-        self._sxndtr(stream).update(|x| x.set_ndt(count))
-    }
-
-    fn _sxpar(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0par> {
+    pub fn set_sxpar(&mut self, stream: Stream, address: *mut u8) {
         match stream {
             Stream::S0 => &mut self.controller.s0par,
             Stream::S1 => &mut self.controller.s1par,
@@ -315,19 +346,36 @@ impl Dma {
             Stream::S5 => &mut self.controller.s5par,
             Stream::S6 => &mut self.controller.s6par,
             Stream::S7 => &mut self.controller.s7par,
-        }
+        }.update(|x| x.set_pa(address as u32))
     }
 
-    pub fn sxpar(&mut self, stream: Stream) -> *mut u8 {
-        self._sxpar(stream).read().pa() as *mut u8
+    pub fn sxmxar(&self, stream: Stream, mi: MemoryIndex) -> *mut u8 {
+        match mi {
+            MemoryIndex::M0 => match stream {
+                Stream::S0 => &self.controller.s0m0ar,
+                Stream::S1 => &self.controller.s1m0ar,
+                Stream::S2 => &self.controller.s2m0ar,
+                Stream::S3 => &self.controller.s3m0ar,
+                Stream::S4 => &self.controller.s4m0ar,
+                Stream::S5 => &self.controller.s5m0ar,
+                Stream::S6 => &self.controller.s6m0ar,
+                Stream::S7 => &self.controller.s7m0ar,
+            },
+            MemoryIndex::M1 => match stream {
+                Stream::S0 => &self.controller.s0m1ar,
+                Stream::S1 => &self.controller.s1m1ar,
+                Stream::S2 => &self.controller.s2m1ar,
+                Stream::S3 => &self.controller.s3m1ar,
+                Stream::S4 => &self.controller.s4m1ar,
+                Stream::S5 => &self.controller.s5m1ar,
+                Stream::S6 => &self.controller.s6m1ar,
+                Stream::S7 => &self.controller.s7m1ar,
+            }
+        }.read().m0a() as *mut u8
     }
 
-    pub fn set_sxpar(&mut self, stream: Stream, address: *mut u8) {
-        self._sxpar(stream).update(|x| x.set_pa(address as u32))
-    }
-
-    fn _sxmxar(&mut self, stream: Stream, buffer: MemoryIndex) -> &mut volatile::ReadWrite<dma::S0m0ar> {
-        match buffer {
+    pub fn set_sxmxar(&mut self, stream: Stream, mi: MemoryIndex, address: *mut u8) {
+        match mi {
             MemoryIndex::M0 => match stream {
                 Stream::S0 => &mut self.controller.s0m0ar,
                 Stream::S1 => &mut self.controller.s1m0ar,
@@ -348,18 +396,23 @@ impl Dma {
                 Stream::S6 => &mut self.controller.s6m1ar,
                 Stream::S7 => &mut self.controller.s7m1ar,
             }
+        }.update(|x| x.set_m0a(address as u32))
+    }
+
+    fn _sxfcr(&self, stream: Stream) -> &volatile::ReadWrite<dma::S0fcr> {
+        match stream {
+            Stream::S0 => &self.controller.s0fcr,
+            Stream::S1 => &self.controller.s1fcr,
+            Stream::S2 => &self.controller.s2fcr,
+            Stream::S3 => &self.controller.s3fcr,
+            Stream::S4 => &self.controller.s4fcr,
+            Stream::S5 => &self.controller.s5fcr,
+            Stream::S6 => &self.controller.s6fcr,
+            Stream::S7 => &self.controller.s7fcr,
         }
     }
 
-    pub fn sxmxar(&mut self, stream: Stream, mi: MemoryIndex) -> *mut u8 {
-        self._sxmxar(stream, mi).read().m0a() as *mut u8
-    }
-
-    pub fn set_sxmxar(&mut self, stream: Stream, mi: MemoryIndex, address: *mut u8) {
-        self._sxmxar(stream, mi).update(|x| x.set_m0a(address as u32))
-    }
-
-    fn _sxfcr(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0fcr> {
+    fn _sxfcr_mut(&mut self, stream: Stream) -> &mut volatile::ReadWrite<dma::S0fcr> {
         match stream {
             Stream::S0 => &mut self.controller.s0fcr,
             Stream::S1 => &mut self.controller.s1fcr,
@@ -397,26 +450,26 @@ impl Dma {
     }
 
     pub fn set_sxfcr_feie(&mut self, stream: Stream, ic: InterruptControl) {
-        self._sxfcr(stream).update(|x| x.set_feie(ic as u8 != 0))
+        self._sxfcr_mut(stream).update(|x| x.set_feie(ic as u8 != 0))
     }
 
     pub fn set_sxfcr_dmdis(&mut self, stream: Stream, mode: DirectMode) {
-        self._sxfcr(stream).update(|x| x.set_dmdis(mode as u8 != 0))
+        self._sxfcr_mut(stream).update(|x| x.set_dmdis(mode as u8 != 0))
     }
 
     pub fn set_sxfcr_fth(&mut self, stream: Stream, ft: FifoThreshold) {
-        self._sxfcr(stream).update(|x| x.set_fth(ft as u8))
+        self._sxfcr_mut(stream).update(|x| x.set_fth(ft as u8))
     }
 
-    fn _lisr(&mut self) -> &volatile::ReadOnly<dma::Lisr> {
+    fn _lisr(&self) -> &volatile::ReadOnly<dma::Lisr> {
         &self.controller.lisr
     }
 
-    fn _hisr(&mut self) -> &volatile::ReadOnly<dma::Hisr> {
+    fn _hisr(&self) -> &volatile::ReadOnly<dma::Hisr> {
         &self.controller.hisr
     }
 
-    pub fn htif(&mut self, stream: Stream) -> InterruptState {
+    pub fn htif(&self, stream: Stream) -> InterruptState {
         unsafe {
             transmute(bool_to_u8(
                 match stream {
@@ -433,7 +486,7 @@ impl Dma {
         }
     }
 
-    pub fn tcif(&mut self, stream: Stream) -> InterruptState {
+    pub fn tcif(&self, stream: Stream) -> InterruptState {
         unsafe {
             transmute(bool_to_u8(
                 match stream {
@@ -450,7 +503,7 @@ impl Dma {
         }
     }
 
-    pub fn teif(&mut self, stream: Stream) -> InterruptState {
+    pub fn teif(&self, stream: Stream) -> InterruptState {
         unsafe {
             transmute(bool_to_u8(
                 match stream {
@@ -467,7 +520,7 @@ impl Dma {
         }
     }
 
-    pub fn feif(&mut self, stream: Stream) -> InterruptState {
+    pub fn feif(&self, stream: Stream) -> InterruptState {
         unsafe {
             transmute(bool_to_u8(
                 match stream {
@@ -484,7 +537,7 @@ impl Dma {
         }
     }
 
-    pub fn dmeif(&mut self, stream: Stream) -> InterruptState {
+    pub fn dmeif(&self, stream: Stream) -> InterruptState {
         unsafe {
             transmute(bool_to_u8(
                 match stream {

@@ -270,31 +270,31 @@ impl<'a> DmaTransfer<'a> {
         }
     }
 
-    pub fn is_ready(&mut self) -> bool {
+    pub fn is_ready(&self) -> bool {
         self.dma.controller.sxcr_en(self.stream) == StreamControl::Disable
     }
 
-    pub fn is_running(&mut self) -> bool {
+    pub fn is_running(&self) -> bool {
         self.dma.controller.sxcr_en(self.stream) == StreamControl::Enable
     }
 
-    pub fn is_finished(&mut self) -> bool {
+    pub fn is_finished(&self) -> bool {
         self.dma.controller.tcif(self.stream) == InterruptState::Raised
     }
 
-    pub fn is_error(&mut self) -> bool {
+    pub fn is_error(&self) -> bool {
         self.is_transfer_error() || self.is_direct_mode_error()
     }
 
-    pub fn is_transfer_error(&mut self) -> bool {
+    pub fn is_transfer_error(&self) -> bool {
         self.dma.controller.teif(self.stream) == InterruptState::Raised        
     }
 
-    pub fn is_direct_mode_error(&mut self) -> bool {
+    pub fn is_direct_mode_error(&self) -> bool {
         self.dma.controller.dmeif(self.stream) == InterruptState::Raised        
     }
 
-    pub fn is_active(&mut self) -> bool {
+    pub fn is_active(&self) -> bool {
         self.is_running() && !self.is_finished() && !self.is_error()
     }
 
@@ -322,7 +322,7 @@ impl<'a> DmaTransfer<'a> {
         self.dma.controller.set_sxcr_en(self.stream, StreamControl::Disable);
     }
 
-    pub fn wait(&mut self) {
+    pub fn wait(&self) {
         while self.is_active() {}
     }
 

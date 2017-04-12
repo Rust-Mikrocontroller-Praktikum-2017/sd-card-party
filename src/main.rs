@@ -165,13 +165,13 @@ fn main(hw: board::Hardware) -> ! {
         flow_controller: dma::FlowContoller::DMA,
         peripheral_increment_offset_size: dma::PeripheralIncrementOffsetSize::UsePSize,
         peripheral: dma::DmaTransferNode {
-            address: unsafe { transmute(&source) },
+            address: &source as *const [i32; 4] as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
         },
         memory: dma::DmaTransferNode {
-            address: unsafe { transmute(&mut destination) },
+            address: &mut destination as *mut [i32; 4] as *mut u8,
             burst_mode: dma::BurstMode::SingleTransfer,
             increment_mode: dma::IncrementMode::Increment,
             transaction_width: dma::Width::Word,
