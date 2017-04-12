@@ -4,6 +4,8 @@ impl SdHandle {
     /// Send CMD0, which resets all cards into the idle state
     pub fn cmd_go_idle_state(&mut self) -> low_level::SdmmcErrorCode {
         self.registers.arg.update(|arg| arg.set_cmdarg(0)); // only stuff bits in argument
+        let mut sent = self.registers.sta.read();
+        println!("Cmdsent register: {:?}", sent);
         
         self.registers.cmd.update(|cmd| {
             // ensure reset values in unused bits
@@ -16,7 +18,9 @@ impl SdHandle {
             cmd.set_cmdindex(0);
         });
         print!("Tried sending CMD0. ");
-
+        sent = self.registers.sta.read();
+        println!("Cmdsent register: {:?}", sent);
+        
         self.get_cmd_error()
     }
 
