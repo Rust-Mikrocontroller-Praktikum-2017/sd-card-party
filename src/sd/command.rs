@@ -49,19 +49,13 @@ impl SdHandle {
     // TODO: Very similiar to get_response7, zusammenführen?
     // represents SDMMC_GetCmdError
     fn get_cmd_error(&self) -> low_level::SdmmcErrorCode {
-        // TODO: warum diese Zahl??
-        let mut timeout_counter = 5_000_000;
-        loop {
-            timeout_counter -= 1;
-            if timeout_counter == 0 {
-                return low_level::TIMEOUT
-            }
-            let sent = self.registers.sta.read().cmdsent();
-            if sent {
-                break;
-            }
+        // Wait for 5000 milliseconds to receive confirmation that command was sent successfully.
+        // The value 5000 is taken from SDMMC_CMDTIMEOUT in the C code.
+        let timeout = ::system_clock::ticks() + 5000;
+        while ::system_clock::ticks() < timeout {
+            if self.registers.sta.read().cmdsent() {return low_level::NONE};
         }
-        low_level::NONE
+        low_level::TIMEOUT
     }
 
     /// Tests whether response 7 can be received. If it can, the card supports version 2.0
@@ -69,39 +63,25 @@ impl SdHandle {
     // represents SDMMC_GetCmdResp7
     fn get_response7(&mut self) -> low_level::SdmmcErrorCode {
         print!("After sending CMD8: ");
-        let mut timeout_counter = 50000;
-        loop {
-            timeout_counter -= 1;
-            if timeout_counter == 0 {
-                // Card does not support version 2.0
-                // TODO: schon hier setzen? -> self.sd_card.version = CardVersion::V1x;
-                print!("Software timeout. ");
-                return low_level::TIMEOUT
+        let timeout = ::system_clock::ticks() + 5000;
+        while ::system_clock::ticks() < timeout {
+            if self.registers.sta.read().ctimeout() {
+                // Command timeout, version 2 not supported.
+                print!("Command timeout. ");
+                return low_level::CMD_RSP_TIMEOUT;
             }
-            if self.registers.sta.read().ccrcfail() ||
-                self.registers.sta.read().cmdrend() ||
-                self.registers.sta.read().ctimeout() {
-                // card supports version 2.0
-                // TODO: schon hier setzen? -> self.sd_card.version = CardVersion::V2x;
-                break;
+            if self.registers.sta.read().ccrcfail() {
+                // version 2 supported
+                print!("Command received, but CRC failed. ");
+                return low_level::NONE;
+            }
+            if self.registers.sta.read().cmdrend() {
+                // version 2 supported
+                print!("Command received correctly. ");
+                return low_level::NONE;
             }
         }
-
-        if self.registers.sta.read().ctimeout() {
-            // Command timeout
-            print!("Command timeout. ");
-            return low_level::CMD_RSP_TIMEOUT;
-        }
-
-        // TODO: remove Print-Debugging
-        if self.registers.sta.read().ccrcfail() {
-            print!("Command received, but CRC failed. ");
-        }
-        if self.registers.sta.read().cmdrend() {
-            print!("Command received correctly. ");
-        }
-
-        // If command received (either with or withour working crc) version 2.x is supported
-        low_level::NONE
+        print!("Software timeout. ");
+        low_level::TIMEOUT
     }
 }
