@@ -2,6 +2,7 @@
 name = "sd-card-party"
 version = "0.1.0"
 authors = ["Christoffer Anselm <c.anselm@paindevs.com>", "Clara Scherer <git20357@s.cherer.de>", "Fabian Hinderer <uypcr@student.kit.edu"]
+license = "MIT/Apache-2.0"
 
 [dependencies]
 cortex-m = "0.1.4"
